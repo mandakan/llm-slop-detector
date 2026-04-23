@@ -4,3 +4,10 @@
   entry: llm-slop
   language: node
   types_or: [markdown, plain-text]
+- id: llm-slop-commit-msg
+  name: LLM Slop Detector (commit message)
+  description: Flag LLM slop in commit messages before they land.
+  entry: llm-slop
+  language: node
+  stages: [commit-msg]
+  types: [text]

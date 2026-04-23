@@ -174,6 +174,7 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 - `llmSlopDetector.enabledPacks`: opt-in extra rule packs (see [Rule packs](#rule-packs)). Default: `[]`.
 - `llmSlopDetector.phrases`: additional regex patterns, appended to the built-in list.
 - `llmSlopDetector.charReplacements`: override quick-fix replacements per character.
+- `llmSlopDetector.scanCommitMessages`: scan Git commit editor buffers (`git-commit`) and the VS Code Source Control input box (`scminput`). Default `true`.
 
 ## Commands
 
@@ -286,6 +287,19 @@ repos:
 ```
 
 Pin to a released tag. The hook runs on staged `markdown` and `plaintext` files and fails the commit on any finding (override with `args: [--severity, error]` to only fail on errors).
+
+There's also a `commit-msg` stage hook that scans the commit message itself before it lands:
+
+```yaml
+repos:
+  - repo: https://github.com/mandakan/llm-slop-detector
+    rev: v0.5.0
+    hooks:
+      - id: llm-slop-commit-msg
+        stages: [commit-msg]
+```
+
+The CLI recognises `COMMIT_EDITMSG`, `MERGE_MSG`, `TAG_EDITMSG`, and `EDIT_DESCRIPTION` by basename and treats them as `git-commit`: `#` comment lines and the post-scissors (`>8`) diff block are skipped automatically. Use both hooks together or pick the one that fits your workflow.
 
 To also scan source-code comments, extend the hook:
 

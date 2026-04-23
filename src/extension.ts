@@ -14,10 +14,12 @@ function rebuildSupportedLangs() {
   const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
   const scanComments = cfg.get<boolean>('scanCodeComments', false);
   const codeLangs = cfg.get<string[]>('codeCommentLanguages', []);
+  const scanCommitMessages = cfg.get<boolean>('scanCommitMessages', true);
   const allowed = new Set(SUPPORTED_CODE_LANGUAGES);
   SUPPORTED_LANGS = new Set<Language>([
     ...BASE_LANGS,
     ...(scanComments ? codeLangs.filter(l => allowed.has(l)) : []),
+    ...(scanCommitMessages ? ['git-commit', 'scminput'] : []),
   ]);
 }
 

@@ -32,6 +32,15 @@ const PROSE_EXTENSIONS = new Map<string, Language>([
   ['.text', 'plaintext'],
 ]);
 
+// Files git passes to commit-msg / prepare-commit-msg hooks, recognised by
+// basename so `llm-slop .git/COMMIT_EDITMSG` works without a flag.
+const GIT_MESSAGE_BASENAMES = new Map<string, Language>([
+  ['COMMIT_EDITMSG', 'git-commit'],
+  ['MERGE_MSG', 'git-commit'],
+  ['TAG_EDITMSG', 'git-commit'],
+  ['EDIT_DESCRIPTION', 'git-commit'],
+]);
+
 const CODE_EXTENSIONS = new Map<string, Language>([
   ['.ts', 'typescript'], ['.mts', 'typescript'], ['.cts', 'typescript'],
   ['.tsx', 'typescriptreact'],
@@ -179,7 +188,8 @@ function collectFiles(paths: string[], extensions: Map<string, Language>): strin
     }
     if (stat.isFile()) {
       const ext = path.extname(abs).toLowerCase();
-      if (extensions.has(ext)) {
+      const base = path.basename(abs);
+      if (extensions.has(ext) || GIT_MESSAGE_BASENAMES.has(base)) {
         result.push(abs);
       } else {
         process.stderr.write(`llm-slop: skipping ${p} (unrecognized extension; add --scan-comments for source code)\n`);
@@ -210,6 +220,8 @@ function walkDir(dir: string, extensions: Map<string, Language>, out: string[]):
 }
 
 function languageFor(file: string, extensions: Map<string, Language>): Language {
+  const byBasename = GIT_MESSAGE_BASENAMES.get(path.basename(file));
+  if (byBasename !== undefined) return byBasename;
   return extensions.get(path.extname(file).toLowerCase()) ?? 'plaintext';
 }
 
