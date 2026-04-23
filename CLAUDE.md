@@ -4,7 +4,7 @@ VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, and
 
 - Extension entry: `src/extension.ts`
 - CLI entry: `src/cli.ts` (shipped as `llm-slop` via the `bin` field; same rule engine as the extension)
-- Pure core (no `vscode` import): `src/core/types.ts`, `src/core/rules.ts`, `src/core/scan.ts`. Shared by extension and CLI so they always produce identical findings.
+- Pure core (no `vscode` import): `src/core/types.ts`, `src/core/rules.ts`, `src/core/scan.ts`, `src/core/comments.ts`. Shared by extension and CLI so they always produce identical findings.
 - VS Code adapter: `src/rules.ts` reads workspace config and delegates to `src/core/rules.ts`; `severityToVscode()` maps the pure `Severity` string union to `vscode.DiagnosticSeverity`
 - Built-in rule list: `builtin-rules.json` at repo root
 - Pre-commit hook: `.pre-commit-hooks.yaml` at repo root

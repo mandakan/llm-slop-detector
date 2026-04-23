@@ -106,6 +106,36 @@ Em dashes allowed on this line -- but curly "quotes" still flag.
 
 The `phrase:` value must match the rule's `pattern` field exactly (the literal regex string from the rule file, not the matched text). The `char:` value can be the literal character or a `U+XXXX` codepoint. Directives inside fenced or inline code are ignored, so README examples like this one don't accidentally silence the whole file.
 
+## Source code comments (opt-in)
+
+LLM slop frequently turns up in JSDoc, Python docstrings, Rust `///` blocks, and `//` comments. Turn on `llmSlopDetector.scanCodeComments` to scan those ranges too:
+
+```json
+"llmSlopDetector.scanCodeComments": true,
+"llmSlopDetector.codeCommentLanguages": [
+  "typescript", "javascript", "python", "rust", "go"
+]
+```
+
+Only comments and docstrings are scanned -- identifiers, string literals, and regular code are ignored. Supported language IDs: `typescript`, `javascript`, `typescriptreact`, `javascriptreact`, `python`, `rust`, `go`, `java`, `csharp`, `cpp`, `c`, `ruby`, `php`, `shellscript`, `swift`, `kotlin`, `scala`, `dart`, `perl`, `r`, `yaml`. Unknown IDs are silently ignored.
+
+### Known limitations
+
+Comment detection is lexical, not AST-based. This means:
+
+- **Python triple-quoted strings are scanned whether they are docstrings or data.** ` x = """some data with delve""" ` will flag. If that matters, put the data on the same line as an inline ignore directive, or switch to a regular string.
+- Regex literals in JavaScript (`/foo/`) aren't specially recognised; odd edge cases like `/** @regex /x/ */` can misparse. File an issue if you hit a real false positive.
+- Indented code blocks in Markdown (four-space) are still scanned -- use fenced blocks instead.
+
+If a comment contains a legitimate flagged word, use an inline ignore directive as usual:
+
+```ts
+/**
+ * <!-- slop-disable-next-line phrase:\bdelve(s|d|ing)?\b -->
+ * We intentionally delve into the cache layout here because...
+ */
+```
+
 ## Rule packs
 
 The core list is deliberately conservative: ~40 phrase rules covering the buzzwords everyone agrees on (`delve`, `leverage`, `seamless`, `paradigm shift`, etc.). For more coverage, opt into one or more packs via `llmSlopDetector.enabledPacks`:
@@ -207,6 +237,7 @@ Options:
 - `--no-builtin` -- skip the built-in core rule list
 - `--config <path>` -- explicit `.llmsloprc.json` path (default: nearest ancestor of cwd)
 - `-s, --severity <level>` -- fail threshold: `error | warning | information | hint` (default `information`)
+- `--scan-comments` -- also scan comments and docstrings in source code files (`.ts`, `.py`, `.rs`, etc). Off by default.
 - `-q, --quiet` -- suppress the summary line
 - `-h, --help` / `-v, --version`
 
@@ -244,6 +275,14 @@ repos:
 ```
 
 Pin to a released tag. The hook runs on staged `markdown` and `plaintext` files and fails the commit on any finding (override with `args: [--severity, error]` to only fail on errors).
+
+To also scan source-code comments, extend the hook:
+
+```yaml
+- id: llm-slop
+  args: [--scan-comments]
+  types_or: [markdown, plain-text, python, typescript, javascript, rust, go]
+```
 
 ### GitHub Actions
 

@@ -1,6 +1,7 @@
 import { CharRule, Finding, RuleSet } from './types';
+import { getCommentScanner } from './comments';
 
-export type Language = 'markdown' | 'plaintext';
+export type Language = string;
 
 type Range = [number, number];
 
@@ -27,7 +28,8 @@ export function charDiagnosticMessage(def: CharRule): string {
 
 export function scanText(text: string, rules: RuleSet, language: Language): Finding[] {
   const findings: Finding[] = [];
-  const excluded = language === 'markdown' ? computeMarkdownExclusions(text) : [];
+  const excluded = computeExcludedRanges(text, language);
+  if (excluded === null) return findings;
   const suppressions = computeSuppressions(text, excluded);
 
   rules.charRegex.lastIndex = 0;
@@ -72,8 +74,32 @@ export function scanText(text: string, rules: RuleSet, language: Language): Find
 }
 
 // ---------------------------------------------------------------------------
-// Scope: markdown exclusions + inline ignore directives
+// Scope: markdown exclusions, code-comment inclusion, inline ignore directives
 // ---------------------------------------------------------------------------
+
+// Returns the ranges that should be SKIPPED during scanning. null means the
+// language isn't supported and the file should not be scanned at all.
+function computeExcludedRanges(text: string, language: Language): Range[] | null {
+  if (language === 'markdown') return computeMarkdownExclusions(text);
+  if (language === 'plaintext') return [];
+
+  const commentScanner = getCommentScanner(language);
+  if (commentScanner === null) return null;
+
+  const comments = mergeRanges(commentScanner(text));
+  return invertRanges(comments, text.length);
+}
+
+function invertRanges(ranges: Range[], textLen: number): Range[] {
+  const inverted: Range[] = [];
+  let cursor = 0;
+  for (const [s, e] of ranges) {
+    if (s > cursor) inverted.push([cursor, s]);
+    cursor = Math.max(cursor, e);
+  }
+  if (cursor < textLen) inverted.push([cursor, textLen]);
+  return inverted;
+}
 
 function mergeRanges(ranges: Range[]): Range[] {
   if (ranges.length === 0) return ranges;

@@ -16,6 +16,7 @@ type CliOptions = {
   configPath?: string;
   severity: Severity;
   quiet: boolean;
+  scanComments: boolean;
 };
 
 type FileReport = {
@@ -23,7 +24,7 @@ type FileReport = {
   findings: Finding[];
 };
 
-const SCAN_EXTENSIONS = new Map<string, Language>([
+const PROSE_EXTENSIONS = new Map<string, Language>([
   ['.md', 'markdown'],
   ['.markdown', 'markdown'],
   ['.mdown', 'markdown'],
@@ -31,9 +32,34 @@ const SCAN_EXTENSIONS = new Map<string, Language>([
   ['.text', 'plaintext'],
 ]);
 
+const CODE_EXTENSIONS = new Map<string, Language>([
+  ['.ts', 'typescript'], ['.mts', 'typescript'], ['.cts', 'typescript'],
+  ['.tsx', 'typescriptreact'],
+  ['.js', 'javascript'], ['.mjs', 'javascript'], ['.cjs', 'javascript'],
+  ['.jsx', 'javascriptreact'],
+  ['.py', 'python'],
+  ['.rs', 'rust'],
+  ['.go', 'go'],
+  ['.java', 'java'],
+  ['.cs', 'csharp'],
+  ['.cpp', 'cpp'], ['.cxx', 'cpp'], ['.cc', 'cpp'], ['.hpp', 'cpp'], ['.hxx', 'cpp'],
+  ['.c', 'c'], ['.h', 'c'],
+  ['.rb', 'ruby'],
+  ['.php', 'php'],
+  ['.sh', 'shellscript'], ['.bash', 'shellscript'], ['.zsh', 'shellscript'],
+  ['.swift', 'swift'],
+  ['.kt', 'kotlin'], ['.kts', 'kotlin'],
+  ['.scala', 'scala'], ['.sc', 'scala'],
+  ['.dart', 'dart'],
+  ['.pl', 'perl'], ['.pm', 'perl'],
+  ['.r', 'r'],
+  ['.yaml', 'yaml'], ['.yml', 'yaml'],
+]);
+
 const HELP = `llm-slop-detector [options] <paths...>
 
 Scan markdown and plaintext files for LLM-style phrases and invisible Unicode.
+With --scan-comments, also scan comments and docstrings in source code.
 
 Options:
   -f, --format <pretty|json|sarif>  Output format (default: pretty)
@@ -44,6 +70,8 @@ Options:
                                     (default: nearest ancestor of cwd)
   -s, --severity <level>            Fail threshold: error | warning |
                                     information | hint (default: information)
+      --scan-comments               Scan comments/docstrings in source code
+                                    files (.ts, .py, .rs, .go, etc)
   -q, --quiet                       Suppress the summary line
   -h, --help                        Show this help
   -v, --version                     Print version
@@ -54,6 +82,7 @@ Examples:
   llm-slop-detector README.md
   llm-slop-detector --pack academic,cliches docs/
   llm-slop-detector --format=json . > slop.json
+  llm-slop-detector --scan-comments src/
 `;
 
 function parseCli(argv: string[]): CliOptions {
@@ -66,6 +95,7 @@ function parseCli(argv: string[]): CliOptions {
       'no-builtin': { type: 'boolean', default: false },
       config: { type: 'string' },
       severity: { type: 'string', short: 's', default: 'information' },
+      'scan-comments': { type: 'boolean', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', short: 'v', default: false },
@@ -112,6 +142,7 @@ function parseCli(argv: string[]): CliOptions {
     configPath: parsed.values.config as string | undefined,
     severity: severityRaw as Severity,
     quiet: parsed.values.quiet as boolean,
+    scanComments: parsed.values['scan-comments'] as boolean,
   };
 }
 
@@ -135,7 +166,7 @@ function extensionRoot(): string {
   return path.resolve(__dirname, '..');
 }
 
-function collectFiles(paths: string[]): string[] {
+function collectFiles(paths: string[], extensions: Map<string, Language>): string[] {
   const result: string[] = [];
   for (const p of paths) {
     const abs = path.resolve(p);
@@ -147,15 +178,20 @@ function collectFiles(paths: string[]): string[] {
       continue;
     }
     if (stat.isFile()) {
-      result.push(abs);
+      const ext = path.extname(abs).toLowerCase();
+      if (extensions.has(ext)) {
+        result.push(abs);
+      } else {
+        process.stderr.write(`llm-slop: skipping ${p} (unrecognized extension; add --scan-comments for source code)\n`);
+      }
     } else if (stat.isDirectory()) {
-      walkDir(abs, result);
+      walkDir(abs, extensions, result);
     }
   }
   return result;
 }
 
-function walkDir(dir: string, out: string[]): void {
+function walkDir(dir: string, extensions: Map<string, Language>, out: string[]): void {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -166,20 +202,20 @@ function walkDir(dir: string, out: string[]): void {
     if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'out') continue;
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      walkDir(full, out);
-    } else if (e.isFile() && SCAN_EXTENSIONS.has(path.extname(e.name).toLowerCase())) {
+      walkDir(full, extensions, out);
+    } else if (e.isFile() && extensions.has(path.extname(e.name).toLowerCase())) {
       out.push(full);
     }
   }
 }
 
-function languageFor(file: string): Language {
-  return SCAN_EXTENSIONS.get(path.extname(file).toLowerCase()) ?? 'plaintext';
+function languageFor(file: string, extensions: Map<string, Language>): Language {
+  return extensions.get(path.extname(file).toLowerCase()) ?? 'plaintext';
 }
 
-function scanFile(file: string, rules: RuleSet): Finding[] {
+function scanFile(file: string, rules: RuleSet, extensions: Map<string, Language>): Finding[] {
   const text = fs.readFileSync(file, 'utf8');
-  return scanText(text, rules, languageFor(file));
+  return scanText(text, rules, languageFor(file, extensions));
 }
 
 function shouldFail(reports: FileReport[], threshold: Severity): boolean {
@@ -323,8 +359,13 @@ function main(): void {
     charReplacements: {},
   });
 
-  const files = collectFiles(opts.paths);
-  const reports: FileReport[] = files.map(f => ({ path: f, findings: scanFile(f, rules) }));
+  const extensions = new Map<string, Language>(PROSE_EXTENSIONS);
+  if (opts.scanComments) {
+    for (const [k, v] of CODE_EXTENSIONS) extensions.set(k, v);
+  }
+
+  const files = collectFiles(opts.paths, extensions);
+  const reports: FileReport[] = files.map(f => ({ path: f, findings: scanFile(f, rules, extensions) }));
 
   let output: string;
   if (opts.format === 'json') output = formatJson(reports);
