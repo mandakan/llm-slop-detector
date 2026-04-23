@@ -12,6 +12,8 @@ A VS Code extension that flags invisible Unicode, AI-style punctuation, and tell
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
 - Configurable phrase rules: ~40 built-in core rules plus six opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`) totalling 285+ curated regex patterns
+- Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
+- Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
 - Per-workspace overrides via `.llmsloprc.json` and per-user overrides via settings
 - One-click quick fixes for deterministic character replacements, plus a "fix all" action
 - Status-bar slop counter for the active file, click to toggle
@@ -59,6 +61,50 @@ Right-aligned status bar item shows the slop count for the active `markdown` or 
 - `$(circle-slash) Slop off` when disabled
 
 Click toggles the detector. Hidden when the active editor is a different language.
+
+## Scope and ignores
+
+In `markdown` files, the scanner skips content where slop rules would only produce noise:
+
+- Fenced code blocks (` ``` ` and `~~~`) and inline code spans (`` `foo` ``)
+- Markdown link URLs (`[text](url)` -- the URL part) and autolinks (`<https://...>`)
+- YAML frontmatter at the top of the file (`---` ... `---` or `---` ... `...`)
+
+Link text, headings, and regular paragraphs are still scanned as before. Plain-text files are scanned in full; they have no markdown structure to skip.
+
+### Inline ignore comments
+
+For one-off exceptions in either `markdown` or `plaintext`, drop an HTML-style directive:
+
+```markdown
+<!-- slop-disable-next-line -->
+This line can delve as much as it wants.
+
+Text before <!-- slop-disable-line --> robust tapestry leverage -- all silenced.
+
+<!-- slop-disable -->
+Everything between these two markers is silenced,
+including multiple paragraphs.
+<!-- slop-enable -->
+```
+
+Three forms:
+
+- `<!-- slop-disable-line -->` -- silence the line the comment is on.
+- `<!-- slop-disable-next-line -->` -- silence the line after the comment.
+- `<!-- slop-disable -->` ... `<!-- slop-enable -->` -- silence everything between the two directives.
+
+By default a directive silences every rule on the covered range. To scope it to one rule, append a `phrase:<pattern>` or `char:<literal-or-codepoint>` spec:
+
+```markdown
+<!-- slop-disable-next-line phrase:\bdelve(s|d|ing)?\b -->
+This delve is fine but leverage still gets flagged.
+
+<!-- slop-disable-next-line char:U+2014 -->
+Em dashes allowed on this line -- but curly "quotes" still flag.
+```
+
+The `phrase:` value must match the rule's `pattern` field exactly (the literal regex string from the rule file, not the matched text). The `char:` value can be the literal character or a `U+XXXX` codepoint. Directives inside fenced or inline code are ignored, so README examples like this one don't accidentally silence the whole file.
 
 ## Rule packs
 
