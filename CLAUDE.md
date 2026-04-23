@@ -22,13 +22,28 @@ Two lists in `src/extension.ts`:
 
 Phrase matches are always **Information** severity to keep the Problems panel non-noisy.
 
-## Release flow
+## Commit convention
 
-1. Edit phrases / code, commit, push.
-2. Bump `version` in `package.json`.
-3. `git tag vX.Y.Z && git push --tags`.
-4. `.github/workflows/release.yml` runs: `npm ci` → compile → `vsce package` → attaches the `.vsix` to a GitHub Release.
-5. Install locally with `code --install-extension llm-slop-detector-X.Y.Z.vsix`.
+**Conventional Commits required** — release-please parses commit messages to decide version bumps and CHANGELOG entries.
+
+- `feat: ...` → minor bump (0.1.0 → 0.2.0)
+- `fix: ...` → patch bump (0.1.0 → 0.1.1)
+- `feat!: ...` or `BREAKING CHANGE:` in body → major bump
+- `chore: ...`, `docs: ...`, `ci: ...`, `refactor: ...`, `test: ...` → no bump, may appear in CHANGELOG "Other" section
+- Non-conventional commits are silently ignored by release-please — don't use them for user-facing changes
+
+Most common for this repo: `feat: add "<phrase>" to default phrase list` when expanding `llmSlopDetector.phrases`.
+
+## Release flow (automated)
+
+Managed by `.github/workflows/release-please.yml`. Do not bump `version` manually, do not tag manually.
+
+1. Commit with a Conventional Commits message and push to `main`.
+2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump + CHANGELOG diff.
+3. When ready to ship, merge the Release PR.
+4. release-please creates the tag + GitHub Release + updates `CHANGELOG.md` on `main`.
+5. Same workflow then builds the vsix and uploads it to the release.
+6. Install locally: `code --install-extension llm-slop-detector-X.Y.Z.vsix`.
 
 Not published to the VS Code Marketplace. Distribution is vsix-via-GitHub-Releases.
 
