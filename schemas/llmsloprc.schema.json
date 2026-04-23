@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mandakan/llm-slop-detector/blob/main/schemas/llmsloprc.schema.json",
+  "title": "LLM Slop Detector rule file",
+  "description": "Workspace-local rule overrides for the LLM Slop Detector VS Code extension and CLI. Drop this at the root of a workspace as .llmsloprc.json to add project-specific characters and phrases, or to override built-in rules. Patterns are JavaScript regex, compiled case-insensitive (gi). Later layers (local file, user settings) override earlier ones (built-in, packs) on the same char or pattern.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URI of the JSON Schema for this file. Optional; VS Code picks the right schema automatically for .llmsloprc.json, but a $schema hint makes the file self-describing."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name for this rule source. Shown in the 'Show loaded rule sources' quick pick and in diagnostic messages as a [name] suffix. Defaults to the file path if omitted."
+    },
+    "version": {
+      "type": "string",
+      "description": "Optional version string for this rule source. Shown in the rule-sources quick pick."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional free-form description for this rule source."
+    },
+    "chars": {
+      "type": "array",
+      "description": "Character rules. Each entry flags a single character (typically invisible Unicode or AI-style punctuation) and can offer a quick-fix replacement.",
+      "items": { "$ref": "#/definitions/charRule" }
+    },
+    "phrases": {
+      "type": "array",
+      "description": "Phrase rules. Each entry is a JavaScript regex flagged on match. Compiled with 'gi' flags, so you do not need to write /.../gi -- just the body. Invalid regexes are skipped with a console warning rather than crashing the extension.",
+      "items": { "$ref": "#/definitions/phraseRule" }
+    }
+  },
+  "definitions": {
+    "severity": {
+      "type": "string",
+      "description": "Diagnostic severity. Maps to VS Code's Problems panel categories. Defaults: warning for invisible characters, information for visible punctuation and phrases.",
+      "enum": ["error", "warning", "information", "info", "hint"]
+    },
+    "charRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["char"],
+      "properties": {
+        "char": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The character to flag. Usually a single code point; the rule engine keys off the whole string, so paste the actual character (e.g. an em dash) rather than an escape sequence."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable label for this character, used in diagnostic messages. Defaults to 'Unknown char (U+XXXX)' if omitted."
+        },
+        "severity": { "$ref": "#/definitions/severity" },
+        "replacement": {
+          "type": "string",
+          "description": "Text to substitute when the user accepts the quick fix. Omit to offer no deterministic fix. Use an empty string to delete the character outright (useful for zero-width invisibles)."
+        },
+        "suggestion": {
+          "type": "string",
+          "description": "Free-form advice shown in the diagnostic when there is no deterministic replacement. Typical use: explain why the character might be legitimate in some contexts (e.g. 'middle dot is valid in Catalan')."
+        }
+      }
+    },
+    "phraseRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pattern"],
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "JavaScript regular-expression source. Compiled with the 'gi' flags -- do not wrap in /.../ and do not add flags. Use \\\\b for word boundaries. Examples: '\\\\bdelve(s|d|ing)?\\\\b', '\\\\bnot only\\\\b.*\\\\bbut also\\\\b'. Invalid patterns are skipped with a console warning."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Short rationale shown in the diagnostic message. Examples: 'LLM filler', 'overused transition', 'banned in this repo'."
+        },
+        "severity": { "$ref": "#/definitions/severity" }
+      }
+    }
+  }
+}

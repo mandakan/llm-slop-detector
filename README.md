@@ -207,6 +207,7 @@ Trust is granted per-workspace via VS Code's "Manage Workspace Trust" command. T
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/schemas/llmsloprc.schema.json",
   "name": "my-project",
   "version": "1.0.0",
   "description": "Extra phrases for this repo",
@@ -224,6 +225,8 @@ Each char rule: `char` required. `name`, `severity` (`error | warning | informat
 Each phrase rule: `pattern` required. `reason`, `severity` optional.
 
 Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
+
+The extension ships a JSON Schema and registers it via `contributes.jsonValidation`, so opening `.llmsloprc.json` in VS Code gives you key completion, hover docs, severity-enum suggestions, and red squigglies on unknown fields or wrong types. The `$schema` line above is optional (VS Code matches by filename) but makes the file self-describing for editors and tools outside VS Code.
 
 ### Quick user overrides (no rule file needed)
 
