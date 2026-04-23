@@ -25,62 +25,27 @@
     "configuration": {
       "title": "LLM Slop Detector",
       "properties": {
-        "llmSlopDetector.phrases": {
-          "type": "array",
-          "items": { "type": "string" },
-          "default": [
-            "\\bdelve(s|d|ing)?\\b",
-            "\\bit'?s worth noting\\b",
-            "\\bit'?s important to note\\b",
-            "\\bin the ever[- ]evolving landscape\\b",
-            "\\bin today'?s fast[- ]paced world\\b",
-            "\\bnavigate the complexit(y|ies)\\b",
-            "\\ba testament to\\b",
-            "\\btapestry of\\b",
-            "\\brich tapestry\\b",
-            "\\bat the heart of\\b",
-            "\\bcrucial role\\b",
-            "\\bplay(s|ed|ing)? a (crucial|pivotal|key|vital) role\\b",
-            "\\bharness(es|ed|ing)? the power of\\b",
-            "\\bunlock(s|ed|ing)? the (potential|power|secrets)\\b",
-            "\\bleverag(e|es|ed|ing)\\b",
-            "\\bembark(s|ed|ing)? on (a|this) journey\\b",
-            "\\brealm of\\b",
-            "\\bmultifaceted\\b",
-            "\\bmeticulous(ly)?\\b",
-            "\\bunderscore(s|d)?\\b",
-            "\\bparamount\\b",
-            "\\bdive (in|into|deeper)\\b",
-            "\\bin conclusion,\\b",
-            "\\bwhen it comes to\\b",
-            "\\bthat said,\\b",
-            "\\bhowever, it'?s\\b",
-            "\\boverall,\\b",
-            "\\bultimately,\\b",
-            "\\bfoster(s|ed|ing)?\\b",
-            "\\bbustling\\b",
-            "\\bgame[- ]chang(er|ing)\\b",
-            "\\bcutting[- ]edge\\b",
-            "\\bstate[- ]of[- ]the[- ]art\\b",
-            "\\brevolutioniz(e|es|ed|ing)\\b",
-            "\\bseamless(ly)?\\b",
-            "\\brobust\\b",
-            "\\bholistic\\b",
-            "\\bsynerg(y|ies|istic)\\b",
-            "\\bparadigm shift\\b"
-          ],
-          "description": "Regex patterns flagged as telltale LLM phrases. Case-insensitive. Use \\b for word boundaries."
-        },
         "llmSlopDetector.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable or disable the detector."
         },
+        "llmSlopDetector.useBuiltinRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "Load the built-in rule list shipped with the extension. Disable this if you want to rely solely on local rule files (.llmsloprc.json) and/or user settings."
+        },
+        "llmSlopDetector.phrases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Additional regex patterns to flag as LLM phrases, appended to the built-in list and any local rule files. Case-insensitive. Use \\b for word boundaries. For richer rule metadata (reason, severity) use a .llmsloprc.json file in your workspace root."
+        },
         "llmSlopDetector.charReplacements": {
           "type": "object",
           "default": {},
           "additionalProperties": { "type": "string" },
-          "description": "Override character quick-fix replacements. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. Example: { \"—\": \" - \" } to wrap em-dash fixes with spaces. User overrides win over built-in defaults."
+          "description": "Override quick-fix replacements for specific characters. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. User overrides win over built-in and local-file rules."
         }
       }
     },
@@ -88,6 +53,10 @@
       {
         "command": "llmSlopDetector.toggle",
         "title": "LLM Slop Detector: Toggle"
+      },
+      {
+        "command": "llmSlopDetector.showRuleSources",
+        "title": "LLM Slop Detector: Show loaded rule sources"
       }
     ]
   },

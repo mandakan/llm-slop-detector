@@ -1,139 +1,78 @@
 import * as vscode from 'vscode';
-
-// ---------------------------------------------------------------------------
-// Character definitions
-// ---------------------------------------------------------------------------
-
-type CharDef = {
-  char: string;
-  name: string;
-  severity: vscode.DiagnosticSeverity;
-  // Built-in safe replacement. Undefined = no auto-fix by default
-  // (user can still opt in via llmSlopDetector.charReplacements).
-  defaultReplacement?: string;
-  // Freeform guidance shown in the diagnostic when there is no default
-  // replacement — explains why we're not offering one.
-  suggestion?: string;
-};
-
-// Invisible / zero-width — these are the most dangerous, always warn.
-const INVISIBLES: CharDef[] = [
-  { char: '​', name: 'ZERO WIDTH SPACE (U+200B)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '' },
-  { char: '‌', name: 'ZERO WIDTH NON-JOINER (U+200C)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '' },
-  { char: '‍', name: 'ZERO WIDTH JOINER (U+200D)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '' },
-  { char: '⁠', name: 'WORD JOINER (U+2060)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '' },
-  { char: '﻿', name: 'ZERO WIDTH NO-BREAK SPACE / BOM (U+FEFF)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '' },
-  { char: ' ', name: 'NO-BREAK SPACE (U+00A0)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: ' ' },
-  { char: ' ', name: 'NARROW NO-BREAK SPACE (U+202F)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: ' ' },
-  { char: ' ', name: 'LINE SEPARATOR (U+2028)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '\n' },
-  { char: ' ', name: 'PARAGRAPH SEPARATOR (U+2029)', severity: vscode.DiagnosticSeverity.Warning, defaultReplacement: '\n' },
-];
-
-// Visible but suspicious — classic LLM punctuation. Info-level (blue), not noisy.
-// Angle quotes, primes, and middle dot have no default fix: they're legitimate
-// punctuation in many contexts (French/German quotes, measurements, Catalan).
-const SUSPICIOUS: CharDef[] = [
-  { char: '—', name: 'EM DASH (U+2014)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: '-' },
-  { char: '–', name: 'EN DASH (U+2013)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: '-' },
-  { char: '…', name: 'HORIZONTAL ELLIPSIS (U+2026)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: '...' },
-  { char: '“', name: 'LEFT DOUBLE QUOTATION MARK (U+201C)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: '"' },
-  { char: '”', name: 'RIGHT DOUBLE QUOTATION MARK (U+201D)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: '"' },
-  { char: '‘', name: 'LEFT SINGLE QUOTATION MARK (U+2018)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: "'" },
-  { char: '’', name: 'RIGHT SINGLE QUOTATION MARK (U+2019)', severity: vscode.DiagnosticSeverity.Information, defaultReplacement: "'" },
-  { char: '«', name: 'LEFT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00AB)', severity: vscode.DiagnosticSeverity.Information, suggestion: 'often legitimate in French/German — no default fix' },
-  { char: '»', name: 'RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00BB)', severity: vscode.DiagnosticSeverity.Information, suggestion: 'often legitimate in French/German — no default fix' },
-  { char: '′', name: 'PRIME (U+2032)', severity: vscode.DiagnosticSeverity.Information, suggestion: 'used in measurements (5′10″) — no default fix' },
-  { char: '″', name: 'DOUBLE PRIME (U+2033)', severity: vscode.DiagnosticSeverity.Information, suggestion: 'used in measurements (5′10″) — no default fix' },
-  { char: '·', name: 'MIDDLE DOT (U+00B7)', severity: vscode.DiagnosticSeverity.Information, suggestion: 'legitimate in Catalan and list separators — no default fix' },
-];
-
-const ALL_CHARS = [...INVISIBLES, ...SUSPICIOUS];
-
-// Build one regex that matches any flagged char for fast scanning.
-const CHAR_REGEX = new RegExp(
-  '[' + ALL_CHARS.map(c => '\\u' + c.char.charCodeAt(0).toString(16).padStart(4, '0')).join('') + ']',
-  'g'
-);
-const CHAR_LOOKUP = new Map(ALL_CHARS.map(c => [c.char, c]));
-
-// ---------------------------------------------------------------------------
-// Diagnostics
-// ---------------------------------------------------------------------------
+import { CharRule, LOCAL_RULES_FILENAME, RuleSet, loadRules } from './rules';
 
 const SOURCE = 'LLM Slop';
+const SUPPORTED_LANGS = new Set(['markdown', 'plaintext']);
+const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [
+  { language: 'markdown' },
+  { language: 'plaintext' },
+];
 
-function buildPhraseRegexes(): RegExp[] {
-  const patterns = vscode.workspace
-    .getConfiguration('llmSlopDetector')
-    .get<string[]>('phrases', []);
-  const regexes: RegExp[] = [];
-  for (const p of patterns) {
-    try {
-      regexes.push(new RegExp(p, 'gi'));
-    } catch (e) {
-      // Skip invalid patterns, don't crash the extension.
-      console.warn(`[LLM Slop] Invalid regex skipped: ${p}`, e);
-    }
+// Module-level mutable rule state. Rebuilt on config change / rule-file change
+// and scans read through it.
+let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [] };
+let CHAR_REGEX: RegExp = /(?!)/g;
+
+function rebuildCharRegex() {
+  if (RULES.chars.size === 0) {
+    CHAR_REGEX = /(?!)/g;
+    return;
   }
-  return regexes;
+  const body = Array.from(RULES.chars.keys())
+    .map(c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))
+    .join('');
+  CHAR_REGEX = new RegExp('[' + body + ']', 'g');
 }
 
-// Resolve the effective replacement for a char: user override wins over default.
-// Returns undefined if no replacement is configured (no auto-fix offered).
 function getReplacement(char: string): string | undefined {
-  const overrides = vscode.workspace
-    .getConfiguration('llmSlopDetector')
-    .get<Record<string, string>>('charReplacements', {});
-  if (Object.prototype.hasOwnProperty.call(overrides, char)) {
-    return overrides[char];
-  }
-  return CHAR_LOOKUP.get(char)?.defaultReplacement;
+  return RULES.chars.get(char)?.replacement;
 }
 
-function diagnosticMessage(def: CharDef): string {
-  const replacement = getReplacement(def.char);
-  if (replacement !== undefined) {
-    const shown = replacement === '' ? 'delete' :
-      replacement === '\n' ? 'newline' :
-      replacement === ' ' ? 'regular space' :
-      JSON.stringify(replacement);
-    return `${def.name} — fix: ${shown}`;
+function charDiagnosticMessage(def: CharRule): string {
+  const parts = [def.name];
+  if (def.replacement !== undefined) {
+    const shown =
+      def.replacement === '' ? 'delete' :
+      def.replacement === '\n' ? 'newline' :
+      def.replacement === ' ' ? 'regular space' :
+      JSON.stringify(def.replacement);
+    parts.push(`fix: ${shown}`);
+  } else if (def.suggestion) {
+    parts.push(def.suggestion);
   }
-  return def.suggestion ? `${def.name} — ${def.suggestion}` : def.name;
+  return `${parts.join(' — ')} [${def.source}]`;
 }
 
-function scanDocument(doc: vscode.TextDocument, phraseRegexes: RegExp[]): vscode.Diagnostic[] {
+function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
   const diags: vscode.Diagnostic[] = [];
   const text = doc.getText();
 
-  // 1. Character-level scan.
+  // Characters.
   CHAR_REGEX.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = CHAR_REGEX.exec(text)) !== null) {
-    const def = CHAR_LOOKUP.get(m[0]);
+    const def = RULES.chars.get(m[0]);
     if (!def) continue;
     const start = doc.positionAt(m.index);
     const end = doc.positionAt(m.index + m[0].length);
-    const d = new vscode.Diagnostic(new vscode.Range(start, end), diagnosticMessage(def), def.severity);
+    const d = new vscode.Diagnostic(new vscode.Range(start, end), charDiagnosticMessage(def), def.severity);
     d.source = SOURCE;
     d.code = 'char';
     diags.push(d);
   }
 
-  // 2. Phrase-level scan (Information severity only — less noisy).
-  for (const rx of phraseRegexes) {
-    rx.lastIndex = 0;
-    while ((m = rx.exec(text)) !== null) {
-      if (m[0].length === 0) {
-        rx.lastIndex++;
-        continue;
-      }
+  // Phrases.
+  for (const p of RULES.phrases) {
+    p.regex.lastIndex = 0;
+    while ((m = p.regex.exec(text)) !== null) {
+      if (m[0].length === 0) { p.regex.lastIndex++; continue; }
       const start = doc.positionAt(m.index);
       const end = doc.positionAt(m.index + m[0].length);
+      const reasonBit = p.reason ? ` — ${p.reason}` : '';
       const d = new vscode.Diagnostic(
         new vscode.Range(start, end),
-        `LLM-style phrase: "${m[0]}"`,
-        vscode.DiagnosticSeverity.Information
+        `LLM-style phrase: "${m[0]}"${reasonBit} [${p.source}]`,
+        p.severity
       );
       d.source = SOURCE;
       d.code = 'phrase';
@@ -153,19 +92,18 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
 
   provideCodeActions(
     document: vscode.TextDocument,
-    range: vscode.Range | vscode.Selection,
+    _range: vscode.Range | vscode.Selection,
     context: vscode.CodeActionContext
   ): vscode.CodeAction[] {
     const actions: vscode.CodeAction[] = [];
 
-    // Per-diagnostic quick fixes for the selection/cursor range.
     for (const diag of context.diagnostics) {
       if (diag.source !== SOURCE || diag.code !== 'char') continue;
       const char = document.getText(diag.range);
       const replacement = getReplacement(char);
       if (replacement === undefined) continue;
 
-      const def = CHAR_LOOKUP.get(char);
+      const def = RULES.chars.get(char);
       const title = replacement === ''
         ? `Delete ${def?.name ?? 'character'}`
         : replacement === '\n'
@@ -180,19 +118,13 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
       actions.push(action);
     }
 
-    // Fix-all-in-file action. Only offered when the cursor's current diagnostic
-    // context contains at least one fixable char — otherwise the lightbulb
-    // would suggest it on phrase diagnostics where no char fix applies.
     const contextHasFixableChar = context.diagnostics.some(d =>
       d.source === SOURCE && d.code === 'char' &&
       getReplacement(document.getText(d.range)) !== undefined
     );
-    const allDiags = vscode.languages.getDiagnostics(document.uri)
-      .filter(d => d.source === SOURCE && d.code === 'char');
-    const fixable = allDiags.filter(d => {
-      const c = document.getText(d.range);
-      return getReplacement(c) !== undefined;
-    });
+    const fixable = vscode.languages.getDiagnostics(document.uri)
+      .filter(d => d.source === SOURCE && d.code === 'char')
+      .filter(d => getReplacement(document.getText(d.range)) !== undefined);
     if (contextHasFixableChar && fixable.length > 0) {
       const fixAll = new vscode.CodeAction(
         `Fix all LLM slop characters in file (${fixable.length})`,
@@ -216,17 +148,9 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
 // Activation
 // ---------------------------------------------------------------------------
 
-const SUPPORTED_LANGS = new Set(['markdown', 'plaintext']);
-const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [
-  { language: 'markdown' },
-  { language: 'plaintext' },
-];
-
 export function activate(context: vscode.ExtensionContext) {
   const collection = vscode.languages.createDiagnosticCollection('llmSlopDetector');
   context.subscriptions.push(collection);
-
-  let phraseRegexes = buildPhraseRegexes();
 
   const refresh = (doc: vscode.TextDocument) => {
     const enabled = vscode.workspace.getConfiguration('llmSlopDetector').get<boolean>('enabled', true);
@@ -234,10 +158,9 @@ export function activate(context: vscode.ExtensionContext) {
       collection.delete(doc.uri);
       return;
     }
-    collection.set(doc.uri, scanDocument(doc, phraseRegexes));
+    collection.set(doc.uri, scanDocument(doc));
   };
 
-  // Status bar indicator: count of issues in the active file, click to toggle.
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   status.command = 'llmSlopDetector.toggle';
   context.subscriptions.push(status);
@@ -275,22 +198,35 @@ export function activate(context: vscode.ExtensionContext) {
     status.show();
   };
 
-  // Scan already-open documents on activation.
-  vscode.workspace.textDocuments.forEach(refresh);
-  updateStatus();
+  const reloadRules = () => {
+    RULES = loadRules(context.extensionUri);
+    rebuildCharRegex();
+    vscode.workspace.textDocuments.forEach(refresh);
+    updateStatus();
+  };
+
+  reloadRules();
+
+  // Live-reload when a local .llmsloprc.json is created/changed/deleted
+  // anywhere in the workspace. The loader itself only reads the files at
+  // workspace roots; nested matches just trigger a harmless reload.
+  const watcher = vscode.workspace.createFileSystemWatcher(`**/${LOCAL_RULES_FILENAME}`);
+  context.subscriptions.push(
+    watcher,
+    watcher.onDidChange(reloadRules),
+    watcher.onDidCreate(reloadRules),
+    watcher.onDidDelete(reloadRules),
+  );
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(doc => { refresh(doc); updateStatus(); }),
     vscode.workspace.onDidChangeTextDocument(e => { refresh(e.document); updateStatus(); }),
     vscode.workspace.onDidCloseTextDocument(doc => { collection.delete(doc.uri); updateStatus(); }),
+    vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
     vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
     vscode.languages.onDidChangeDiagnostics(() => updateStatus()),
     vscode.workspace.onDidChangeConfiguration(e => {
-      if (e.affectsConfiguration('llmSlopDetector')) {
-        phraseRegexes = buildPhraseRegexes();
-        vscode.workspace.textDocuments.forEach(refresh);
-        updateStatus();
-      }
+      if (e.affectsConfiguration('llmSlopDetector')) reloadRules();
     }),
     vscode.languages.registerCodeActionsProvider(
       CODE_ACTION_SELECTORS,
@@ -302,6 +238,18 @@ export function activate(context: vscode.ExtensionContext) {
       const current = cfg.get<boolean>('enabled', true);
       await cfg.update('enabled', !current, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(`LLM Slop Detector ${!current ? 'enabled' : 'disabled'}`);
+    }),
+    vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
+      if (RULES.sources.length === 0) {
+        vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
+        return;
+      }
+      const items = RULES.sources.map(s => ({
+        label: `$(list-unordered) ${s.name}${s.version ? ` v${s.version}` : ''}`,
+        description: `${s.charCount} char${s.charCount === 1 ? '' : 's'}, ${s.phraseCount} phrase${s.phraseCount === 1 ? '' : 's'}`,
+        detail: s.description ? `${s.description} — ${s.origin}` : s.origin,
+      }));
+      await vscode.window.showQuickPick(items, { title: 'LLM Slop Detector: loaded rule sources' });
     })
   );
 }

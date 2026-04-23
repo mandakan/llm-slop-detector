@@ -8,6 +8,8 @@ src/**
 tsconfig.json
 package-lock.json
 CLAUDE.md
+release-please-config.json
+.release-please-manifest.json
 *.vsix
 **/*.map
 **/*.ts

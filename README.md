@@ -34,19 +34,45 @@ Reload VS Code. Open any `.md` or `.txt` file — diagnostics appear in the Prob
 Settings (Cmd/Ctrl+, → search "LLM Slop"):
 
 - `llmSlopDetector.enabled` — toggle on/off
-- `llmSlopDetector.phrases` — array of regex patterns (case-insensitive). Edit in `settings.json` to add your own.
+- `llmSlopDetector.useBuiltinRules` — load the shipped built-in list (default `true`). Turn off to rely only on local rule files / user settings.
+- `llmSlopDetector.phrases` — additional regex patterns, appended to the built-in list.
+- `llmSlopDetector.charReplacements` — override quick-fix replacements per character.
 
-## Toggle command
+## Commands
 
-`Cmd/Ctrl+Shift+P` → "LLM Slop Detector: Toggle"
+`Cmd/Ctrl+Shift+P` →
+- **LLM Slop Detector: Toggle** — enable/disable
+- **LLM Slop Detector: Show loaded rule sources** — quick pick listing every active source with name, version, and rule counts
 
-## Adding your own phrases
+## Rule sources
+
+Rules merge from three layers (later overrides earlier on the same char/pattern):
+
+1. Built-in list shipped with the extension
+2. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
+3. User settings
+
+### `.llmsloprc.json` format
 
 ```json
-"llmSlopDetector.phrases": [
-  "\\bdelve(s|d|ing)?\\b",
-  "\\byour own pet phrase\\b"
-]
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "description": "Extra phrases for this repo",
+  "chars": [
+    { "char": "—", "name": "EM DASH", "severity": "information", "replacement": " - " }
+  ],
+  "phrases": [
+    { "pattern": "\\bour pet phrase\\b", "reason": "we banned this" }
+  ]
+}
 ```
 
-Use `\\b` for word boundaries. Patterns are JavaScript regex, case-insensitive.
+Each char rule: `char` required; `name`, `severity` (`error | warning | information | hint`), `replacement`, `suggestion` optional. Each phrase rule: `pattern` required; `reason`, `severity` optional. Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
+
+### Quick user overrides (no rule file needed)
+
+```json
+"llmSlopDetector.phrases": ["\\byour own pet phrase\\b"],
+"llmSlopDetector.charReplacements": { "—": " - " }
+```
