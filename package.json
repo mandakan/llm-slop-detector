@@ -108,6 +108,14 @@
           },
           "description": "Override quick-fix replacements for specific characters. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. User overrides win over built-in and local-file rules."
         },
+        "llmSlopDetector.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "File-glob patterns to skip, using .gitignore syntax. Merged with patterns from a .slopignore file at the workspace root. Example: [\"CHANGELOG.md\", \"docs/generated/**\"]. Use !pattern to re-include after a broader ignore."
+        },
         "llmSlopDetector.debounceMs": {
           "type": "number",
           "default": 150,

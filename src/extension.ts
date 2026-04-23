@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { LOCAL_RULES_FILENAME, RuleSet, loadRules, severityToVscode } from './rules';
 import { Language, scanText } from './core/scan';
 import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
+import { IgnoreMatcher, SLOPIGNORE_FILENAME, loadIgnoreMatcher } from './core/ignore';
 import { Finding } from './core/types';
 
 const SOURCE = 'LLM Slop';
@@ -26,6 +28,22 @@ function rebuildSupportedLangs() {
 // Module-level mutable rule state. Rebuilt on config change / rule-file change
 // and scans read through it.
 let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(?!)/g };
+
+// One ignore matcher per workspace folder. Rebuilt on config change or when a
+// .slopignore file is created/changed/deleted. Untitled and out-of-workspace
+// docs bypass ignore filtering.
+let IGNORE_BY_FOLDER = new Map<string, IgnoreMatcher>();
+
+function isIgnoredDocument(doc: vscode.TextDocument): boolean {
+  if (doc.uri.scheme !== 'file') return false;
+  const folder = vscode.workspace.getWorkspaceFolder(doc.uri);
+  if (!folder) return false;
+  const matcher = IGNORE_BY_FOLDER.get(folder.uri.fsPath);
+  if (!matcher || matcher.patterns.length === 0) return false;
+  const rel = path.relative(folder.uri.fsPath, doc.uri.fsPath);
+  if (rel.startsWith('..')) return false;
+  return matcher.ignores(rel);
+}
 
 // Findings keyed by document URI, stashed during scan so the hover provider
 // can recover rule metadata (pattern, matched char) without rescanning.
@@ -191,8 +209,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   const refresh = (doc: vscode.TextDocument) => {
     const enabled = vscode.workspace.getConfiguration('llmSlopDetector').get<boolean>('enabled', true);
-    if (!enabled || !SUPPORTED_LANGS.has(doc.languageId as Language)) {
+    if (!enabled || !SUPPORTED_LANGS.has(doc.languageId as Language) || isIgnoredDocument(doc)) {
       collection.delete(doc.uri);
+      FINDINGS_BY_URI.delete(doc.uri.toString());
       return;
     }
     collection.set(doc.uri, scanDocument(doc));
@@ -234,7 +253,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const updateStatus = () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor || !SUPPORTED_LANGS.has(editor.document.languageId as Language)) {
+    if (!editor || !SUPPORTED_LANGS.has(editor.document.languageId as Language) || isIgnoredDocument(editor.document)) {
       status.hide();
       return;
     }
@@ -265,8 +284,19 @@ export function activate(context: vscode.ExtensionContext) {
     status.show();
   };
 
+  const reloadIgnore = () => {
+    const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+    const extra = cfg.get<string[]>('exclude', []);
+    const next = new Map<string, IgnoreMatcher>();
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      next.set(folder.uri.fsPath, loadIgnoreMatcher(folder.uri.fsPath, extra));
+    }
+    IGNORE_BY_FOLDER = next;
+  };
+
   const reloadRules = () => {
     RULES = loadRules(context.extensionUri);
+    reloadIgnore();
     rebuildSupportedLangs();
     vscode.workspace.textDocuments.forEach(refresh);
     updateStatus();
@@ -278,11 +308,16 @@ export function activate(context: vscode.ExtensionContext) {
   // anywhere in the workspace. The loader itself only reads the files at
   // workspace roots; nested matches just trigger a harmless reload.
   const watcher = vscode.workspace.createFileSystemWatcher(`**/${LOCAL_RULES_FILENAME}`);
+  const ignoreWatcher = vscode.workspace.createFileSystemWatcher(`**/${SLOPIGNORE_FILENAME}`);
   context.subscriptions.push(
     watcher,
     watcher.onDidChange(reloadRules),
     watcher.onDidCreate(reloadRules),
     watcher.onDidDelete(reloadRules),
+    ignoreWatcher,
+    ignoreWatcher.onDidChange(reloadRules),
+    ignoreWatcher.onDidCreate(reloadRules),
+    ignoreWatcher.onDidDelete(reloadRules),
   );
 
   context.subscriptions.push(
