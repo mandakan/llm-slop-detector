@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.3.1...llm-slop-detector-v0.4.0) (2026-04-23)
+
+
+### Features
+
+* add security rule pack for LLM-weaponized invisibles ([b90c4fb](https://github.com/mandakan/llm-slop-detector/commit/b90c4fbfc07f5280acea0b45c4d39be01ded9d7c))
+* expand built-in char set with invisible-char safeguards ([f264cfb](https://github.com/mandakan/llm-slop-detector/commit/f264cfbee2e4c8862b5bcc22d83eaf66694f5b03))
+* expand built-in char set with invisible-char safeguards ([f41945f](https://github.com/mandakan/llm-slop-detector/commit/f41945fcd7f47f8a9238453ad63953e2e0d311be))
+
+
+### Bug Fixes
+
+* exclude docs/ from vsix ([40e2292](https://github.com/mandakan/llm-slop-detector/commit/40e2292a27658f44bd5edf081164c7a6de08faa6))
+* exclude docs/ from vsix ([13ad9cb](https://github.com/mandakan/llm-slop-detector/commit/13ad9cb20c81458b5fe64515d241fbb7286d66a4)), closes [#14](https://github.com/mandakan/llm-slop-detector/issues/14)
+
 ## [0.3.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.3.0...llm-slop-detector-v0.3.1) (2026-04-23)
 
 
