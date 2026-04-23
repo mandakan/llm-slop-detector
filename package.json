@@ -2,12 +2,15 @@
   "name": "llm-slop-detector",
   "displayName": "LLM Slop Detector",
   "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "mathias-local",
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Linters", "Other"],
+  "categories": [
+    "Linters",
+    "Other"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,7 +30,9 @@
       "properties": {
         "llmSlopDetector.phrases": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
             "\\bdelve(s|d|ing)?\\b",
             "\\bit'?s worth noting\\b",
@@ -79,7 +84,9 @@
         "llmSlopDetector.charReplacements": {
           "type": "object",
           "default": {},
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Override character quick-fix replacements. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. Example: { \"—\": \" - \" } to wrap em-dash fixes with spaces. User overrides win over built-in defaults."
         }
       }
