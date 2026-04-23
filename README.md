@@ -64,8 +64,36 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 
 - `llmSlopDetector.enabled`: toggle on/off
 - `llmSlopDetector.useBuiltinRules`: load the shipped built-in list (default `true`). Turn off to rely only on local rule files and user settings.
+- `llmSlopDetector.enabledPacks`: opt-in extra rule packs, see [Rule packs](#rule-packs) below. Default: `[]`.
 - `llmSlopDetector.phrases`: additional regex patterns, appended to the built-in list.
 - `llmSlopDetector.charReplacements`: override quick-fix replacements per character.
+
+## Rule packs
+
+The core list (`builtin-rules.json`) is deliberately conservative: ~40 phrase rules covering the buzzwords everyone agrees on (`delve`, `leverage`, `seamless`, `paradigm shift`, etc.). For more coverage, opt into one or more packs via `llmSlopDetector.enabledPacks`:
+
+- **`academic`** -- words over-represented in LLM-authored academic writing (`bolster`, `elucidate`, `facilitate`, `showcase`, `noteworthy`, ~90 entries). Severity `hint` so the Problems panel stays usable. Derived from [`berenslab/llm-excess-vocab`](https://github.com/berenslab/llm-excess-vocab) (MIT).
+- **`cliches`** -- general LLM cliche vocabulary (`captivating`, `pinnacle`, `galvanize`, journey/landscape/symphony metaphors). Derived from [`nanxstats/llm-cliches`](https://github.com/nanxstats/llm-cliches) (MIT).
+- **`fiction`** -- fiction and creative-writing tells (breath hitched, heart hammering, shivers down spine, chestnut eyes, LLM-cliche character names). **Includes adult-fiction markers.** Derived from [`SicariusSicariiStuff/SLOP_Detector`](https://github.com/SicariusSicariiStuff/SLOP_Detector) (Apache-2.0).
+- **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
+- **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.
+
+Enable one or more in your settings:
+
+```json
+"llmSlopDetector.enabledPacks": ["academic", "structural"]
+```
+
+Attribution and license texts for each pack's source are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+### Tuning a pack
+
+Packs are merged after the core list, so a pack entry wins if it targets the same char as core. Phrase rules accumulate. If a specific pack rule is too noisy for your writing, either:
+
+1. Disable the whole pack (remove from `enabledPacks`), or
+2. Keep the pack enabled and override locally via a `.llmsloprc.json` file at your workspace root -- a later layer's chars override earlier layers on the same character; phrases are additive, so there's no way to silence a single phrase without forking the pack.
+
+If a whole pack is unusable in your workflow, file an issue.
 
 ## Commands
 
@@ -75,11 +103,12 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 
 ## Rule sources
 
-Rules merge from three layers (later overrides earlier on the same char or pattern):
+Rules merge from these layers (later overrides earlier on the same char or pattern):
 
-1. Built-in list shipped with the extension
-2. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
-3. User settings
+1. Built-in core list shipped with the extension
+2. Optional built-in packs listed in `llmSlopDetector.enabledPacks`
+3. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
+4. User settings
 
 ### `.llmsloprc.json` format
 

@@ -38,6 +38,23 @@
           "default": true,
           "description": "Load the built-in rule list shipped with the extension. Disable this if you want to rely solely on local rule files (.llmsloprc.json) and/or user settings."
         },
+        "llmSlopDetector.enabledPacks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["academic", "cliches", "fiction", "claudeisms", "structural"],
+            "enumDescriptions": [
+              "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
+              "General LLM cliche adjectives/nouns/verbs (derived from nanxstats/llm-cliches, MIT)",
+              "Fiction and creative-writing LLM tells, including NSFW markers (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
+              "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
+              "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary"
+            ]
+          },
+          "default": [],
+          "uniqueItems": true,
+          "description": "Optional built-in rule packs to enable on top of the core rule list. See THIRD_PARTY_NOTICES.md for attribution."
+        },
         "llmSlopDetector.phrases": {
           "type": "array",
           "items": {
