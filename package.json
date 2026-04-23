@@ -2,7 +2,7 @@
   "name": "llm-slop-detector",
   "displayName": "LLM Slop Detector",
   "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "thias-se",
   "engines": {
     "vscode": "^1.95.0"
@@ -59,7 +59,13 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["academic", "cliches", "fiction", "claudeisms", "structural"],
+            "enum": [
+              "academic",
+              "cliches",
+              "fiction",
+              "claudeisms",
+              "structural"
+            ],
             "enumDescriptions": [
               "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
               "General LLM cliche adjectives/nouns/verbs (derived from nanxstats/llm-cliches, MIT)",
