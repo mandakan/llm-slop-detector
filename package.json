@@ -2,12 +2,15 @@
   "name": "llm-slop-detector",
   "displayName": "LLM Slop Detector",
   "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "mathias-local",
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Linters", "Other"],
+  "categories": [
+    "Linters",
+    "Other"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -37,14 +40,18 @@
         },
         "llmSlopDetector.phrases": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Additional regex patterns to flag as LLM phrases, appended to the built-in list and any local rule files. Case-insensitive. Use \\b for word boundaries. For richer rule metadata (reason, severity) use a .llmsloprc.json file in your workspace root."
         },
         "llmSlopDetector.charReplacements": {
           "type": "object",
           "default": {},
-          "additionalProperties": { "type": "string" },
+          "additionalProperties": {
+            "type": "string"
+          },
           "description": "Override quick-fix replacements for specific characters. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. User overrides win over built-in and local-file rules."
         }
       }
@@ -66,7 +73,7 @@
     "package": "npx --yes @vscode/vsce package"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.6.0",
     "@types/vscode": "^1.95.0",
     "typescript": "^5.7.0"
   }
