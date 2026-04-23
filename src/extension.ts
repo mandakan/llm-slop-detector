@@ -239,6 +239,12 @@ export function activate(context: vscode.ExtensionContext) {
       await cfg.update('enabled', !current, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(`LLM Slop Detector ${!current ? 'enabled' : 'disabled'}`);
     }),
+    vscode.commands.registerCommand('llmSlopDetector.openSettings', async () => {
+      await vscode.commands.executeCommand(
+        'workbench.action.openSettings',
+        `@ext:${context.extension.id}`,
+      );
+    }),
     vscode.commands.registerCommand('llmSlopDetector.showOnboarding', () => showOnboarding(context)),
     vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
       if (RULES.sources.length === 0) {
@@ -288,6 +294,9 @@ async function showOnboarding(context: vscode.ExtensionContext) {
   await context.globalState.update(ONBOARDING_KEY, true);
 
   if (choice === openPacks) {
+    // Focus the specific setting the onboarding is selling. The general
+    // "open all settings for this extension" entry point is the
+    // llmSlopDetector.openSettings command.
     await vscode.commands.executeCommand('workbench.action.openSettings', 'llmSlopDetector.enabledPacks');
   } else if (choice === learnMore) {
     await vscode.commands.executeCommand('extension.open', context.extension.id);

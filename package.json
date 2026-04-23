@@ -79,6 +79,10 @@
         "title": "LLM Slop Detector: Toggle"
       },
       {
+        "command": "llmSlopDetector.openSettings",
+        "title": "LLM Slop Detector: Open settings"
+      },
+      {
         "command": "llmSlopDetector.showRuleSources",
         "title": "LLM Slop Detector: Show loaded rule sources"
       },

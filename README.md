@@ -78,6 +78,7 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 
 `Cmd/Ctrl+Shift+P`:
 - **LLM Slop Detector: Toggle**: enable/disable
+- **LLM Slop Detector: Open settings**: jump to this extension's settings filtered by `@ext:` query
 - **LLM Slop Detector: Show loaded rule sources**: quick pick listing every active source with name, version, and rule counts
 - **LLM Slop Detector: Show onboarding**: re-show the onboarding prompt (useful if you dismissed it too early)
 
