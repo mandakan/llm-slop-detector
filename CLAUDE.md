@@ -26,11 +26,12 @@ Four pieces of user-visible surface, all wired up in `activate()`:
 
 ## Rule sources
 
-Rules (chars + phrases) load from three layers, merged in order. Later layers override earlier on the same char or pattern.
+Rules (chars + phrases) load from these layers, merged in order. Later layers override earlier on the same char or pattern.
 
-1. **Built-in**: `builtin-rules.json` at repo root, shipped in the vsix, read at activation from `context.extensionUri`. Disable via `llmSlopDetector.useBuiltinRules: false`.
-2. **Local**: `.llmsloprc.json` in a workspace folder's root. Same schema as the built-in file. Auto-loaded if present, live-reloaded via `vscode.workspace.createFileSystemWatcher`.
-3. **User settings**: `llmSlopDetector.phrases` (additive list of regex strings) and `llmSlopDetector.charReplacements` (map of char to replacement, overrides earlier layers).
+1. **Built-in core**: `builtin-rules.json` at repo root, shipped in the vsix, read at activation from `context.extensionUri`. Disable via `llmSlopDetector.useBuiltinRules: false`. Contains no third-party content.
+2. **Built-in packs** (opt-in): JSON files in `builtin-packs/`, loaded when their name appears in `llmSlopDetector.enabledPacks`. Current packs: `academic`, `cliches`, `fiction`, `claudeisms`, `structural`. Whitelist is in `BUILTIN_PACKS` in `src/rules.ts` -- unknown names are ignored. Attribution for each pack is in `THIRD_PARTY_NOTICES.md`.
+3. **Local**: `.llmsloprc.json` in a workspace folder's root. Same schema as the built-in file. Auto-loaded if present, live-reloaded via `vscode.workspace.createFileSystemWatcher`.
+4. **User settings**: `llmSlopDetector.phrases` (additive list of regex strings) and `llmSlopDetector.charReplacements` (map of char to replacement, overrides earlier layers).
 
 `loadRules(extensionUri)` returns a `RuleSet { chars, phrases, sources }`. `extension.ts` stores it in module-level `RULES` and rebuilds `CHAR_REGEX` on every reload. Reload is triggered by the file watcher, workspace-folder changes, and config changes.
 
@@ -67,13 +68,26 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 
 ## Commit convention
 
-**Conventional Commits required**. release-please parses commit messages to decide version bumps and CHANGELOG entries.
+**Conventional Commits required, on EVERY commit that lands on `main`.** The repo merges PRs via merge-commit (squash and rebase are disabled), so each commit you push is preserved on `main` individually and is scanned by release-please.
 
 - `feat: ...`: minor bump (e.g. 0.2.0 -> 0.3.0)
 - `fix: ...`: patch bump (e.g. 0.2.0 -> 0.2.1)
 - `feat!: ...` or `BREAKING CHANGE:` in body: minor bump (pre-1.0 rule, see below)
 - `chore: ...`, `docs: ...`, `ci: ...`, `refactor: ...`, `test: ...`: no version bump, may appear in CHANGELOG "Other" section
 - Non-conventional commits are silently ignored by release-please. Don't use them for user-facing changes.
+
+### Branch hygiene before merge
+
+**This matters because there's no squash safety net.** Whatever is in the branch at merge time is what lands on `main`.
+
+Hard rules for any PR branch before clicking Merge:
+
+1. Every commit message starts with a Conventional Commit type. No exceptions. Messages that don't are invisible to release-please and just clutter `main`.
+2. No `wip`, `fix typo`, `address review`, `.`, or similar scratch commits. Fold them into the commit they fix up via `git commit --fixup <sha>` + `git rebase -i --autosquash origin/main`.
+3. Each commit should be a self-contained, buildable unit -- prefer several small `feat:` / `fix:` / `refactor:` commits over one giant one, but don't ship broken intermediate states either.
+4. Rewrite history only on the feature branch, never on `main`. Push rewrites with `git push --force-with-lease`, never plain `--force`.
+
+Self-check before merging: `git log --oneline origin/main..HEAD` should read like a clean CHANGELOG preview. If it doesn't, rebase.
 
 ### Pre-1.0 bumping
 
@@ -83,7 +97,7 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 
 Managed by `.github/workflows/release-please.yml`. Do not bump `version` in `package.json` manually, do not tag manually.
 
-1. Commit with a Conventional Commits message and push to `main`.
+1. Commit with Conventional Commits messages on a feature branch, open a PR, let CI pass, and **merge via merge commit** (the repo has squash and rebase disabled -- every commit you push ends up on `main` individually, so every commit message needs to be conventional or it's ignored by release-please).
 2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump and CHANGELOG diff.
 3. When ready to ship, merge the Release PR.
 4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`.
@@ -101,7 +115,9 @@ Not published to the VS Code Marketplace. Distribution is vsix-via-GitHub-Releas
 
 ## Packaging
 
-`.vscodeignore` keeps the vsix lean: only `builtin-rules.json`, `package.json`, `readme.md`, `LICENSE.txt`, and `out/` ship. Dev files, release-please config, `src/`, `.github/`, `.claude/`, and CLAUDE.md are excluded.
+`.vscodeignore` keeps the vsix lean: `builtin-rules.json`, `builtin-packs/`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE`, root governance files, and `out/` ship. Dev files, release-please config, `src/`, `.github/`, `.claude/`, and CLAUDE.md are excluded.
+
+Third-party-licensed content lives only in `builtin-packs/*.json`. `THIRD_PARTY_NOTICES.md` must ship alongside any pack that contains derivative content. When adding a new pack sourced from a third-party project, also add its license block to `THIRD_PARTY_NOTICES.md` in the same commit.
 
 ## What's out of scope
 

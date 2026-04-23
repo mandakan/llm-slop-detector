@@ -4,6 +4,9 @@ import * as path from 'path';
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
+export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural'] as const;
+export type BuiltinPack = typeof BUILTIN_PACKS[number];
+
 export type CharRule = {
   char: string;
   name: string;
@@ -170,6 +173,16 @@ export function loadRules(extensionUri: vscode.Uri): RuleSet {
     const builtinPath = vscode.Uri.joinPath(extensionUri, 'builtin-rules.json').fsPath;
     const raw = readJsonFile(builtinPath);
     if (raw) ingestList(raw, 'built-in', rules);
+  }
+
+  // 1b. Optional built-in packs the user opts into.
+  const enabledPacks = cfg.get<string[]>('enabledPacks', []);
+  const allowed = new Set<string>(BUILTIN_PACKS);
+  for (const pack of enabledPacks) {
+    if (!allowed.has(pack)) continue;
+    const packPath = vscode.Uri.joinPath(extensionUri, 'builtin-packs', `${pack}.json`).fsPath;
+    const raw = readJsonFile(packPath);
+    if (raw) ingestList(raw, `pack:${pack}`, rules);
   }
 
   // 2. Local workspace rule files (.llmsloprc.json at workspace root).

@@ -3,7 +3,7 @@
   "displayName": "LLM Slop Detector",
   "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
   "version": "0.2.0",
-  "publisher": "mathias-local",
+  "publisher": "thias-se",
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -11,6 +11,23 @@
     "Linters",
     "Other"
   ],
+  "keywords": [
+    "llm",
+    "ai",
+    "slop",
+    "unicode",
+    "markdown",
+    "plaintext",
+    "linter",
+    "writing",
+    "chatgpt",
+    "claude"
+  ],
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -38,6 +55,23 @@
           "default": true,
           "description": "Load the built-in rule list shipped with the extension. Disable this if you want to rely solely on local rule files (.llmsloprc.json) and/or user settings."
         },
+        "llmSlopDetector.enabledPacks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["academic", "cliches", "fiction", "claudeisms", "structural"],
+            "enumDescriptions": [
+              "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
+              "General LLM cliche adjectives/nouns/verbs (derived from nanxstats/llm-cliches, MIT)",
+              "Fiction and creative-writing LLM tells, including NSFW markers (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
+              "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
+              "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary"
+            ]
+          },
+          "default": [],
+          "uniqueItems": true,
+          "description": "Optional built-in rule packs to enable on top of the core rule list. See THIRD_PARTY_NOTICES.md for attribution."
+        },
         "llmSlopDetector.phrases": {
           "type": "array",
           "items": {
@@ -62,8 +96,16 @@
         "title": "LLM Slop Detector: Toggle"
       },
       {
+        "command": "llmSlopDetector.openSettings",
+        "title": "LLM Slop Detector: Open settings"
+      },
+      {
         "command": "llmSlopDetector.showRuleSources",
         "title": "LLM Slop Detector: Show loaded rule sources"
+      },
+      {
+        "command": "llmSlopDetector.showOnboarding",
+        "title": "LLM Slop Detector: Show onboarding"
       }
     ]
   },

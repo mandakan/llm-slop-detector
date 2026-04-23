@@ -239,6 +239,13 @@ export function activate(context: vscode.ExtensionContext) {
       await cfg.update('enabled', !current, vscode.ConfigurationTarget.Global);
       vscode.window.showInformationMessage(`LLM Slop Detector ${!current ? 'enabled' : 'disabled'}`);
     }),
+    vscode.commands.registerCommand('llmSlopDetector.openSettings', async () => {
+      await vscode.commands.executeCommand(
+        'workbench.action.openSettings',
+        `@ext:${context.extension.id}`,
+      );
+    }),
+    vscode.commands.registerCommand('llmSlopDetector.showOnboarding', () => showOnboarding(context)),
     vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
       if (RULES.sources.length === 0) {
         vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
@@ -252,6 +259,48 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showQuickPick(items, { title: 'LLM Slop Detector: loaded rule sources' });
     })
   );
+
+  void maybeShowOnboarding(context);
+}
+
+// ---------------------------------------------------------------------------
+// Onboarding
+// ---------------------------------------------------------------------------
+
+// Versioned so we can re-trigger onboarding for material UX changes without
+// spamming users who have already seen the current version. Bump the suffix
+// when you want everyone to see the toast again.
+const ONBOARDING_KEY = 'llmSlopDetector.onboarding.v1';
+
+async function maybeShowOnboarding(context: vscode.ExtensionContext) {
+  if (context.globalState.get<boolean>(ONBOARDING_KEY, false)) return;
+  await showOnboarding(context);
+}
+
+async function showOnboarding(context: vscode.ExtensionContext) {
+  const openPacks = 'Browse rule packs';
+  const learnMore = 'Learn more';
+  const dismiss = 'Dismiss';
+
+  const choice = await vscode.window.showInformationMessage(
+    'LLM Slop Detector is watching Markdown and plain-text files. Optional rule packs (academic, fiction, claudeisms, structural) add broader coverage -- opt into them in settings.',
+    openPacks,
+    learnMore,
+    dismiss,
+  );
+
+  // Record as shown regardless of choice. Any interaction -- including
+  // dismissal via the X button -- suppresses the toast on future activations.
+  await context.globalState.update(ONBOARDING_KEY, true);
+
+  if (choice === openPacks) {
+    // Focus the specific setting the onboarding is selling. The general
+    // "open all settings for this extension" entry point is the
+    // llmSlopDetector.openSettings command.
+    await vscode.commands.executeCommand('workbench.action.openSettings', 'llmSlopDetector.enabledPacks');
+  } else if (choice === learnMore) {
+    await vscode.commands.executeCommand('extension.open', context.extension.id);
+  }
 }
 
 export function deactivate() { /* diagnostics are disposed via subscriptions */ }

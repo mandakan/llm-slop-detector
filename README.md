@@ -37,26 +37,32 @@ Right-aligned status bar item shows the slop count for the active `markdown` or 
 
 Click toggles the detector. Hidden when the active editor is a different language.
 
-## Install (from a GitHub Release)
+## Rule packs
 
-Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
+The core list is deliberately conservative: ~40 phrase rules covering the buzzwords everyone agrees on (`delve`, `leverage`, `seamless`, `paradigm shift`, etc.). For more coverage, opt into one or more packs via `llmSlopDetector.enabledPacks`:
 
-```bash
-code --install-extension llm-slop-detector-<version>.vsix
+- **`academic`** -- words over-represented in LLM-authored academic writing (`bolster`, `elucidate`, `facilitate`, `showcase`, `noteworthy`, ~90 entries). Severity `hint` so the Problems panel stays usable. Derived from [`berenslab/llm-excess-vocab`](https://github.com/berenslab/llm-excess-vocab) (MIT).
+- **`cliches`** -- general LLM cliche vocabulary (`captivating`, `pinnacle`, `galvanize`, journey/landscape/symphony metaphors). Derived from [`nanxstats/llm-cliches`](https://github.com/nanxstats/llm-cliches) (MIT).
+- **`fiction`** -- fiction and creative-writing tells (breath hitched, heart hammering, shivers down spine, chestnut eyes, LLM-cliche character names). **Includes adult-fiction markers.** Derived from [`SicariusSicariiStuff/SLOP_Detector`](https://github.com/SicariusSicariiStuff/SLOP_Detector) (Apache-2.0).
+- **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
+- **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.
+
+Enable one or more in your settings:
+
+```json
+"llmSlopDetector.enabledPacks": ["academic", "structural"]
 ```
 
-## Install (from source)
+Attribution and license texts for each pack's source are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
-```bash
-git clone https://github.com/mandakan/llm-slop-detector.git
-cd llm-slop-detector
-npm install
-npm run compile
-npm run package
-code --install-extension llm-slop-detector-*.vsix
-```
+### Tuning a pack
 
-Reload VS Code. Open any `.md` or `.txt` file. Diagnostics appear in the Problems panel and as squiggles inline.
+Packs are merged after the core list, so a pack entry wins if it targets the same char as core. Phrase rules accumulate. If a specific pack rule is too noisy for your writing, either:
+
+1. Disable the whole pack (remove from `enabledPacks`), or
+2. Keep the pack enabled and override locally via a `.llmsloprc.json` file at your workspace root -- a later layer's chars override earlier layers on the same character; phrases are additive, so there's no way to silence a single phrase without forking the pack.
+
+If a whole pack is unusable in your workflow, file an issue.
 
 ## Configuration
 
@@ -64,6 +70,7 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 
 - `llmSlopDetector.enabled`: toggle on/off
 - `llmSlopDetector.useBuiltinRules`: load the shipped built-in list (default `true`). Turn off to rely only on local rule files and user settings.
+- `llmSlopDetector.enabledPacks`: opt-in extra rule packs (see [Rule packs](#rule-packs)). Default: `[]`.
 - `llmSlopDetector.phrases`: additional regex patterns, appended to the built-in list.
 - `llmSlopDetector.charReplacements`: override quick-fix replacements per character.
 
@@ -71,15 +78,18 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 
 `Cmd/Ctrl+Shift+P`:
 - **LLM Slop Detector: Toggle**: enable/disable
+- **LLM Slop Detector: Open settings**: jump to this extension's settings filtered by `@ext:` query
 - **LLM Slop Detector: Show loaded rule sources**: quick pick listing every active source with name, version, and rule counts
+- **LLM Slop Detector: Show onboarding**: re-show the onboarding prompt (useful if you dismissed it too early)
 
 ## Rule sources
 
-Rules merge from three layers (later overrides earlier on the same char or pattern):
+Rules merge from these layers (later overrides earlier on the same char or pattern):
 
-1. Built-in list shipped with the extension
-2. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
-3. User settings
+1. Built-in core list shipped with the extension
+2. Optional built-in packs listed in `llmSlopDetector.enabledPacks`
+3. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
+4. User settings
 
 ### `.llmsloprc.json` format
 
@@ -109,3 +119,34 @@ Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
 "llmSlopDetector.phrases": ["\\byour own pet phrase\\b"],
 "llmSlopDetector.charReplacements": { "--": " - " }
 ```
+
+## Install
+
+### From the VS Code Marketplace
+
+Search for **LLM Slop Detector** in the Extensions view, or:
+
+```bash
+code --install-extension thias-se.llm-slop-detector
+```
+
+### From a GitHub Release
+
+Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
+
+```bash
+code --install-extension llm-slop-detector-<version>.vsix
+```
+
+### From source
+
+```bash
+git clone https://github.com/mandakan/llm-slop-detector.git
+cd llm-slop-detector
+npm install
+npm run compile
+npm run package
+code --install-extension llm-slop-detector-*.vsix
+```
+
+Reload VS Code. Open any `.md` or `.txt` file. Diagnostics appear in the Problems panel and as squiggles inline.
