@@ -27,7 +27,7 @@ function rebuildSupportedLangs() {
 
 // Module-level mutable rule state. Rebuilt on config change / rule-file change
 // and scans read through it.
-let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(?!)/g };
+let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(?!)/g, overridesApplied: 0 };
 
 // One ignore matcher per workspace folder. Rebuilt on config change or when a
 // .slopignore file is created/changed/deleted. Untitled and out-of-workspace
@@ -362,11 +362,17 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
         return;
       }
-      const items = RULES.sources.map(s => ({
+      const items: vscode.QuickPickItem[] = RULES.sources.map(s => ({
         label: `$(list-unordered) ${s.name}${s.version ? ` v${s.version}` : ''}`,
         description: `${s.charCount} char${s.charCount === 1 ? '' : 's'}, ${s.phraseCount} phrase${s.phraseCount === 1 ? '' : 's'}`,
         detail: s.description ? `${s.description} (${s.origin})` : s.origin,
       }));
+      if (RULES.overridesApplied > 0) {
+        items.push({
+          label: `$(settings-gear) ${RULES.overridesApplied} severity override${RULES.overridesApplied === 1 ? '' : 's'} applied`,
+          description: 'via llmSlopDetector.severityOverrides',
+        });
+      }
       await vscode.window.showQuickPick(items, { title: 'LLM Slop Detector: loaded rule sources' });
     })
   );

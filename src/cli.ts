@@ -2,8 +2,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseArgs } from 'util';
-import { BUILTIN_PACKS, findLocalRulePathFromCwd, loadRules } from './core/rules';
-import { Finding, RuleSet, SEVERITY_RANK, Severity } from './core/types';
+import { BUILTIN_PACKS, findLocalRulePathFromCwd, loadRules, parseSeverityOverrides } from './core/rules';
+import { Finding, RuleSet, SEVERITY_RANK, Severity, SeverityOverride } from './core/types';
 import { Language, offsetToLineCol, scanText } from './core/scan';
 import { IgnoreMatcher, loadIgnoreMatcher } from './core/ignore';
 
@@ -20,6 +20,7 @@ type CliOptions = {
   scanComments: boolean;
   exclude: string[];
   noIgnoreFile: boolean;
+  severityOverrides: Record<string, SeverityOverride>;
 };
 
 type FileReport = {
@@ -87,6 +88,12 @@ Options:
       --exclude <pattern>            .gitignore-style pattern to skip. Repeat
                                     for multiple. Merged with .slopignore.
       --no-slopignore               Ignore the .slopignore file at cwd
+      --severity-override <k=v>     Override severity for a selector. Repeat
+                                    for multiple. Value: error | warning |
+                                    information | hint | off.
+                                    Selectors: pack:<name>,
+                                    phrase:<pattern>, char:<literal|U+XXXX>,
+                                    source:<name>.
   -q, --quiet                       Suppress the summary line
   -h, --help                        Show this help
   -v, --version                     Print version
@@ -113,6 +120,7 @@ function parseCli(argv: string[]): CliOptions {
       'scan-comments': { type: 'boolean', default: false },
       exclude: { type: 'string', multiple: true, default: [] },
       'no-slopignore': { type: 'boolean', default: false },
+      'severity-override': { type: 'string', multiple: true, default: [] },
       quiet: { type: 'boolean', short: 'q', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', short: 'v', default: false },
@@ -156,6 +164,25 @@ function parseCli(argv: string[]): CliOptions {
     ? excludeRaw.filter((v): v is string => typeof v === 'string')
     : typeof excludeRaw === 'string' ? [excludeRaw] : [];
 
+  const overrideRaw = parsed.values['severity-override'];
+  const overrideSpecs = Array.isArray(overrideRaw)
+    ? overrideRaw.filter((v): v is string => typeof v === 'string')
+    : typeof overrideRaw === 'string' ? [overrideRaw] : [];
+  const rawOverrides: Record<string, unknown> = {};
+  const validValues = new Set(['error', 'warning', 'information', 'info', 'hint', 'off']);
+  for (const spec of overrideSpecs) {
+    const eq = spec.indexOf('=');
+    if (eq === -1) die(`invalid --severity-override: ${spec} (expected key=value)`);
+    const key = spec.slice(0, eq).trim();
+    const value = spec.slice(eq + 1).trim();
+    if (key.length === 0) die(`invalid --severity-override: ${spec} (empty selector)`);
+    if (!validValues.has(value)) {
+      die(`invalid --severity-override value: ${spec} (expected error|warning|information|hint|off)`);
+    }
+    rawOverrides[key] = value;
+  }
+  const severityOverrides = parseSeverityOverrides(rawOverrides);
+
   return {
     paths: parsed.positionals,
     format: format as Format,
@@ -167,8 +194,10 @@ function parseCli(argv: string[]): CliOptions {
     scanComments: parsed.values['scan-comments'] as boolean,
     exclude,
     noIgnoreFile: parsed.values['no-slopignore'] as boolean,
+    severityOverrides,
   };
 }
+
 
 function die(msg: string): never {
   process.stderr.write(`llm-slop: ${msg}\n`);
@@ -405,6 +434,7 @@ function main(): void {
     localRulePaths,
     userPhrases: [],
     charReplacements: {},
+    severityOverrides: opts.severityOverrides,
   });
 
   const extensions = new Map<string, Language>(PROSE_EXTENSIONS);
