@@ -68,7 +68,7 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 
 ## Commit convention
 
-**Conventional Commits required, on EVERY commit that lands on `main`.** The repo merges PRs via merge-commit (squash and rebase are disabled), so each commit you push is preserved on `main` individually and is scanned by release-please.
+**Conventional Commits required.** Which commit release-please parses depends on how you merge.
 
 - `feat: ...`: minor bump (e.g. 0.2.0 -> 0.3.0)
 - `fix: ...`: patch bump (e.g. 0.2.0 -> 0.2.1)
@@ -76,18 +76,34 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 - `chore: ...`, `docs: ...`, `ci: ...`, `refactor: ...`, `test: ...`: no version bump, may appear in CHANGELOG "Other" section
 - Non-conventional commits are silently ignored by release-please. Don't use them for user-facing changes.
 
+### Merge strategy
+
+**Default: squash-merge.** One commit per PR lands on `main`, with the squash commit's subject set from the PR title. The PR title must be a Conventional Commit (`feat:`/`fix:`/etc.) -- that's what release-please reads. `amannn/action-semantic-pull-request` enforces it on the PR.
+
+**Exception: merge-commit** for the occasional PR that genuinely contains multiple distinct changes you want to surface as separate CHANGELOG entries (e.g. a `feat:` plus an unrelated `fix:` plus a `docs:` in one branch). Pick "Create a merge commit" in the GitHub UI on that specific PR. When you do:
+
+- Every commit on the branch must itself be a Conventional Commit, since each one lands on `main` and each one is scanned by release-please.
+- **The PR title must be plain English, not conventional-commit form.** GitHub embeds the PR title into the merge commit's body, and release-please's parser treats that body as an additional conventional commit. A `feat: ...` PR title on a merge-commit PR produces a phantom duplicate entry in the CHANGELOG.
+- The semantic-PR-title check will fail on a non-conventional title. Either bypass it for that PR or relax the action's config.
+
+Rebase-merge stays disabled -- too easy to re-order commits accidentally.
+
 ### Branch hygiene before merge
 
-**This matters because there's no squash safety net.** Whatever is in the branch at merge time is what lands on `main`.
+Squash-merge absorbs most sins: scratch commits, wip pushes, and typo fixups all collapse into one clean commit tied to the PR title. So branch hygiene matters primarily for reviewers and for the merge-commit exception.
 
-Hard rules for any PR branch before clicking Merge:
+For squash-merge PRs:
 
-1. Every commit message starts with a Conventional Commit type. No exceptions. Messages that don't are invisible to release-please and just clutter `main`.
+1. The PR title is the only thing that lands on `main`. Make it a clear Conventional Commit.
+2. Commit messages on the branch are for reviewers. Keep them readable but don't obsess.
+
+For merge-commit PRs (the exception):
+
+1. Every commit message starts with a Conventional Commit type. Messages that don't are invisible to release-please and just clutter `main`.
 2. No `wip`, `fix typo`, `address review`, `.`, or similar scratch commits. Fold them into the commit they fix up via `git commit --fixup <sha>` + `git rebase -i --autosquash origin/main`.
 3. Each commit should be a self-contained, buildable unit -- prefer several small `feat:` / `fix:` / `refactor:` commits over one giant one, but don't ship broken intermediate states either.
 4. Rewrite history only on the feature branch, never on `main`. Push rewrites with `git push --force-with-lease`, never plain `--force`.
-
-Self-check before merging: `git log --oneline origin/main..HEAD` should read like a clean CHANGELOG preview. If it doesn't, rebase.
+5. `git log --oneline origin/main..HEAD` should read like a clean CHANGELOG preview. If it doesn't, rebase.
 
 ### Pre-1.0 bumping
 
@@ -97,7 +113,7 @@ Self-check before merging: `git log --oneline origin/main..HEAD` should read lik
 
 Managed by `.github/workflows/release-please.yml`. Do not bump `version` in `package.json` manually, do not tag manually.
 
-1. Commit with Conventional Commits messages on a feature branch, open a PR, let CI pass, and **merge via merge commit** (the repo has squash and rebase disabled -- every commit you push ends up on `main` individually, so every commit message needs to be conventional or it's ignored by release-please).
+1. Work on a feature branch with a Conventional Commit PR title, let CI pass, and **squash-merge** (the default). The PR title becomes the commit subject on `main` and is the only input release-please sees for this PR. For the rare PR that genuinely needs multiple CHANGELOG entries, pick "Create a merge commit" instead and follow the merge-commit rules in "Merge strategy" above.
 2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump and CHANGELOG diff.
 3. When ready to ship, merge the Release PR.
 4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`.
