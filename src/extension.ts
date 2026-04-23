@@ -5,6 +5,7 @@ import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
 import { Finding } from './core/types';
 
 const SOURCE = 'LLM Slop';
+const DOCS_URI = vscode.Uri.parse('https://github.com/mandakan/llm-slop-detector#what-it-flags');
 const BASE_LANGS: Language[] = ['markdown', 'plaintext'];
 let SUPPORTED_LANGS = new Set<Language>(BASE_LANGS);
 const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
@@ -32,6 +33,12 @@ function getReplacement(char: string): string | undefined {
   return RULES.chars.get(char)?.replacement;
 }
 
+function diagnosticCode(d: vscode.Diagnostic): string | number | undefined {
+  const c = d.code;
+  if (typeof c === 'object' && c !== null) return c.value;
+  return c;
+}
+
 function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
   const lang = doc.languageId as Language;
   if (!SUPPORTED_LANGS.has(lang)) {
@@ -45,7 +52,7 @@ function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
     const end = doc.positionAt(f.offset + f.length);
     const d = new vscode.Diagnostic(new vscode.Range(start, end), f.message, severityToVscode(f.severity));
     d.source = SOURCE;
-    d.code = f.code;
+    d.code = { value: f.code, target: DOCS_URI };
     return d;
   });
 }
@@ -65,7 +72,7 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
     const actions: vscode.CodeAction[] = [];
 
     for (const diag of context.diagnostics) {
-      if (diag.source !== SOURCE || diag.code !== 'char') continue;
+      if (diag.source !== SOURCE || diagnosticCode(diag) !== 'char') continue;
       const char = document.getText(diag.range);
       const replacement = getReplacement(char);
       if (replacement === undefined) continue;
@@ -86,11 +93,11 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
     }
 
     const contextHasFixableChar = context.diagnostics.some(d =>
-      d.source === SOURCE && d.code === 'char' &&
+      d.source === SOURCE && diagnosticCode(d) === 'char' &&
       getReplacement(document.getText(d.range)) !== undefined
     );
     const fixable = vscode.languages.getDiagnostics(document.uri)
-      .filter(d => d.source === SOURCE && d.code === 'char')
+      .filter(d => d.source === SOURCE && diagnosticCode(d) === 'char')
       .filter(d => getReplacement(document.getText(d.range)) !== undefined);
     if (contextHasFixableChar && fixable.length > 0) {
       const fixAll = new vscode.CodeAction(
@@ -194,8 +201,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const diags = vscode.languages.getDiagnostics(editor.document.uri)
       .filter(d => d.source === SOURCE);
-    const chars = diags.filter(d => d.code === 'char').length;
-    const phrases = diags.filter(d => d.code === 'phrase').length;
+    const chars = diags.filter(d => diagnosticCode(d) === 'char').length;
+    const phrases = diags.filter(d => diagnosticCode(d) === 'phrase').length;
     const total = chars + phrases;
     if (total === 0) {
       status.text = '$(check) No slop';
