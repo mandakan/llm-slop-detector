@@ -122,6 +122,14 @@ Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
 
 ## Install
 
+### From the VS Code Marketplace
+
+Search for **LLM Slop Detector** in the Extensions view, or:
+
+```bash
+code --install-extension thias-se.llm-slop-detector
+```
+
 ### From a GitHub Release
 
 Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
