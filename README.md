@@ -14,6 +14,7 @@ A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, a
 - Configurable phrase rules: ~40 built-in core rules plus six opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`) totalling 285+ curated regex patterns
 - Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
 - Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
+- Hover over any flagged range for the rule selector plus a ready-to-copy `slop-disable-next-line` snippet
 - Per-workspace overrides via `.llmsloprc.json` and per-user overrides via settings
 - One-click quick fixes for deterministic character replacements, plus a "fix all" action
 - Status-bar slop counter for the active file, click to toggle
@@ -181,6 +182,7 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 - **LLM Slop Detector: Open settings**: jump to this extension's settings filtered by `@ext:` query
 - **LLM Slop Detector: Show loaded rule sources**: quick pick listing every active source with name, version, and rule counts
 - **LLM Slop Detector: Show onboarding**: re-show the onboarding prompt (useful if you dismissed it too early)
+- **LLM Slop Detector: Scan selection**: list slop findings in the current selection (or the current line if nothing is selected) in a quick pick -- clicking a finding jumps to it. Useful for checking a pasted paragraph without scrolling through every diagnostic in the file.
 
 ## Rule sources
 

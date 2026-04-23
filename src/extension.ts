@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import { LOCAL_RULES_FILENAME, RuleSet, loadRules, severityToVscode } from './rules';
 import { Language, scanText } from './core/scan';
 import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
+import { Finding } from './core/types';
 
 const SOURCE = 'LLM Slop';
+const DOCS_URI = vscode.Uri.parse('https://github.com/mandakan/llm-slop-detector#what-it-flags');
 const BASE_LANGS: Language[] = ['markdown', 'plaintext'];
 let SUPPORTED_LANGS = new Set<Language>(BASE_LANGS);
 const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
@@ -23,20 +25,34 @@ function rebuildSupportedLangs() {
 // and scans read through it.
 let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(?!)/g };
 
+// Findings keyed by document URI, stashed during scan so the hover provider
+// can recover rule metadata (pattern, matched char) without rescanning.
+const FINDINGS_BY_URI = new Map<string, Finding[]>();
+
 function getReplacement(char: string): string | undefined {
   return RULES.chars.get(char)?.replacement;
 }
 
+function diagnosticCode(d: vscode.Diagnostic): string | number | undefined {
+  const c = d.code;
+  if (typeof c === 'object' && c !== null) return c.value;
+  return c;
+}
+
 function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
   const lang = doc.languageId as Language;
-  if (!SUPPORTED_LANGS.has(lang)) return [];
+  if (!SUPPORTED_LANGS.has(lang)) {
+    FINDINGS_BY_URI.delete(doc.uri.toString());
+    return [];
+  }
   const findings = scanText(doc.getText(), RULES, lang);
+  FINDINGS_BY_URI.set(doc.uri.toString(), findings);
   return findings.map(f => {
     const start = doc.positionAt(f.offset);
     const end = doc.positionAt(f.offset + f.length);
     const d = new vscode.Diagnostic(new vscode.Range(start, end), f.message, severityToVscode(f.severity));
     d.source = SOURCE;
-    d.code = f.code;
+    d.code = { value: f.code, target: DOCS_URI };
     return d;
   });
 }
@@ -56,7 +72,7 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
     const actions: vscode.CodeAction[] = [];
 
     for (const diag of context.diagnostics) {
-      if (diag.source !== SOURCE || diag.code !== 'char') continue;
+      if (diag.source !== SOURCE || diagnosticCode(diag) !== 'char') continue;
       const char = document.getText(diag.range);
       const replacement = getReplacement(char);
       if (replacement === undefined) continue;
@@ -77,11 +93,11 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
     }
 
     const contextHasFixableChar = context.diagnostics.some(d =>
-      d.source === SOURCE && d.code === 'char' &&
+      d.source === SOURCE && diagnosticCode(d) === 'char' &&
       getReplacement(document.getText(d.range)) !== undefined
     );
     const fixable = vscode.languages.getDiagnostics(document.uri)
-      .filter(d => d.source === SOURCE && d.code === 'char')
+      .filter(d => d.source === SOURCE && diagnosticCode(d) === 'char')
       .filter(d => getReplacement(document.getText(d.range)) !== undefined);
     if (contextHasFixableChar && fixable.length > 0) {
       const fixAll = new vscode.CodeAction(
@@ -99,6 +115,52 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
     }
 
     return actions;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hover provider: show rule metadata + ready-to-copy ignore snippet
+// ---------------------------------------------------------------------------
+
+function charCodepointSpec(char: string): string {
+  return 'U+' + char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function ignoreSpecFor(f: Finding): string {
+  return f.code === 'phrase' && f.rulePattern !== undefined
+    ? `phrase:${f.rulePattern}`
+    : `char:${charCodepointSpec(f.matchText)}`;
+}
+
+class SlopHoverProvider implements vscode.HoverProvider {
+  provideHover(document: vscode.TextDocument, position: vscode.Position): vscode.Hover | undefined {
+    const findings = FINDINGS_BY_URI.get(document.uri.toString());
+    if (!findings || findings.length === 0) return;
+
+    const offset = document.offsetAt(position);
+    const matched = findings.filter(f => offset >= f.offset && offset < f.offset + f.length);
+    if (matched.length === 0) return;
+
+    const blocks = matched.map(f => {
+      const spec = ignoreSpecFor(f);
+      const heading = f.code === 'phrase' ? 'LLM-style phrase' : 'Flagged character';
+      const lines = [
+        `**${heading}** -- \`${f.source}\``,
+        '',
+        `Rule selector: \`${spec}\``,
+        '',
+        'Suppress the next line:',
+        '```markdown',
+        `<!-- slop-disable-next-line ${spec} -->`,
+        '```',
+      ];
+      return lines.join('\n');
+    });
+
+    const md = new vscode.MarkdownString(blocks.join('\n\n---\n\n'));
+    md.isTrusted = false;
+    md.supportHtml = false;
+    return new vscode.Hover(md);
   }
 }
 
@@ -139,8 +201,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
     const diags = vscode.languages.getDiagnostics(editor.document.uri)
       .filter(d => d.source === SOURCE);
-    const chars = diags.filter(d => d.code === 'char').length;
-    const phrases = diags.filter(d => d.code === 'phrase').length;
+    const chars = diags.filter(d => diagnosticCode(d) === 'char').length;
+    const phrases = diags.filter(d => diagnosticCode(d) === 'phrase').length;
     const total = chars + phrases;
     if (total === 0) {
       status.text = '$(check) No slop';
@@ -179,7 +241,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(doc => { refresh(doc); updateStatus(); }),
     vscode.workspace.onDidChangeTextDocument(e => { refresh(e.document); updateStatus(); }),
-    vscode.workspace.onDidCloseTextDocument(doc => { collection.delete(doc.uri); updateStatus(); }),
+    vscode.workspace.onDidCloseTextDocument(doc => {
+      collection.delete(doc.uri);
+      FINDINGS_BY_URI.delete(doc.uri.toString());
+      updateStatus();
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
     vscode.workspace.onDidGrantWorkspaceTrust(reloadRules),
     vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
@@ -192,6 +258,7 @@ export function activate(context: vscode.ExtensionContext) {
       new SlopCodeActionProvider(),
       { providedCodeActionKinds: SlopCodeActionProvider.providedCodeActionKinds }
     ),
+    vscode.languages.registerHoverProvider(CODE_ACTION_SELECTORS, new SlopHoverProvider()),
     vscode.commands.registerCommand('llmSlopDetector.toggle', async () => {
       const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
       const current = cfg.get<boolean>('enabled', true);
@@ -205,6 +272,7 @@ export function activate(context: vscode.ExtensionContext) {
       );
     }),
     vscode.commands.registerCommand('llmSlopDetector.showOnboarding', () => showOnboarding(context)),
+    vscode.commands.registerCommand('llmSlopDetector.scanSelection', () => scanSelection()),
     vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
       if (RULES.sources.length === 0) {
         vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
@@ -223,13 +291,76 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // ---------------------------------------------------------------------------
+// Scan selection
+// ---------------------------------------------------------------------------
+
+function severityCodicon(s: vscode.DiagnosticSeverity): string {
+  switch (s) {
+    case vscode.DiagnosticSeverity.Error: return 'error';
+    case vscode.DiagnosticSeverity.Warning: return 'warning';
+    case vscode.DiagnosticSeverity.Information: return 'info';
+    case vscode.DiagnosticSeverity.Hint: return 'lightbulb';
+  }
+}
+
+async function scanSelection(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showInformationMessage('LLM Slop Detector: no active editor.');
+    return;
+  }
+  const doc = editor.document;
+  if (!SUPPORTED_LANGS.has(doc.languageId as Language)) {
+    vscode.window.showInformationMessage(
+      `LLM Slop Detector: ${doc.languageId} is not a scanned language.`
+    );
+    return;
+  }
+
+  const sel = editor.selection;
+  const scope = sel.isEmpty ? doc.lineAt(sel.start).range : new vscode.Range(sel.start, sel.end);
+
+  const diags = vscode.languages.getDiagnostics(doc.uri)
+    .filter(d => d.source === SOURCE && scope.intersection(d.range))
+    .sort((a, b) => a.range.start.compareTo(b.range.start));
+
+  if (diags.length === 0) {
+    vscode.window.showInformationMessage(
+      sel.isEmpty
+        ? 'LLM Slop Detector: no findings on this line.'
+        : 'LLM Slop Detector: no findings in selection.'
+    );
+    return;
+  }
+
+  type Item = vscode.QuickPickItem & { diagnostic: vscode.Diagnostic };
+  const items: Item[] = diags.map(d => ({
+    label: `$(${severityCodicon(d.severity)}) ${doc.getText(d.range).trim() || String(d.code)}`,
+    description: `Line ${d.range.start.line + 1}, col ${d.range.start.character + 1}`,
+    detail: d.message,
+    diagnostic: d,
+  }));
+
+  const pick = await vscode.window.showQuickPick(items, {
+    title: `LLM Slop in ${sel.isEmpty ? 'line' : 'selection'} (${diags.length} finding${diags.length === 1 ? '' : 's'})`,
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+
+  if (pick) {
+    editor.revealRange(pick.diagnostic.range, vscode.TextEditorRevealType.InCenter);
+    editor.selection = new vscode.Selection(pick.diagnostic.range.start, pick.diagnostic.range.end);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Onboarding
 // ---------------------------------------------------------------------------
 
 // Versioned so we can re-trigger onboarding for material UX changes without
 // spamming users who have already seen the current version. Bump the suffix
 // when you want everyone to see the toast again.
-const ONBOARDING_KEY = 'llmSlopDetector.onboarding.v1';
+const ONBOARDING_KEY = 'llmSlopDetector.onboarding.v2';
 
 async function maybeShowOnboarding(context: vscode.ExtensionContext) {
   if (context.globalState.get<boolean>(ONBOARDING_KEY, false)) return;
@@ -242,7 +373,7 @@ async function showOnboarding(context: vscode.ExtensionContext) {
   const dismiss = 'Dismiss';
 
   const choice = await vscode.window.showInformationMessage(
-    'LLM Slop Detector is watching Markdown and plain-text files. Optional rule packs (academic, fiction, claudeisms, structural) add broader coverage -- opt into them in settings.',
+    'LLM Slop Detector is watching Markdown and plain-text files. Six optional rule packs (academic, cliches, fiction, claudeisms, structural, security) add broader coverage -- opt into them in settings.',
     openPacks,
     learnMore,
     dismiss,
