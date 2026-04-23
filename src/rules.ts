@@ -4,7 +4,7 @@ import * as path from 'path';
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
-export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural'] as const;
+export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural', 'security'] as const;
 export type BuiltinPack = typeof BUILTIN_PACKS[number];
 
 export type CharRule = {
