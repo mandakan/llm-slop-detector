@@ -117,10 +117,10 @@ Managed by `.github/workflows/release-please.yml`. Do not bump `version` in `pac
 2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump and CHANGELOG diff.
 3. When ready to ship, merge the Release PR.
 4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`.
-5. Same workflow then builds the vsix and uploads it to the release.
-6. Install locally: `code --install-extension llm-slop-detector-X.Y.Z.vsix`.
+5. Same workflow then builds the vsix, uploads it to the GitHub Release, and publishes it to the VS Code Marketplace under publisher `thias-se`.
+6. Install from Marketplace, or sideload: `code --install-extension llm-slop-detector-X.Y.Z.vsix`.
 
-Not published to the VS Code Marketplace. Distribution is vsix-via-GitHub-Releases.
+Marketplace publish uses an Azure DevOps PAT stored as the `VSCE_PAT` repo secret. release-please itself runs with a GitHub fine-grained PAT stored as `RELEASE_PLEASE_TOKEN` so that the Release-PR merge actually triggers downstream workflow steps (the default `GITHUB_TOKEN` does not, by design).
 
 ## Versions & targets
 
