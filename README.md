@@ -175,3 +175,15 @@ code --install-extension llm-slop-detector-*.vsix
 ```
 
 Reload VS Code. Open any `.md` or `.txt` file. Diagnostics appear in the Problems panel and as squiggles inline.
+
+## Alternatives
+
+This extension deliberately overlaps with a few existing tools. If one of these fits your workflow better, use it -- and if you landed here while searching for one of them, what follows is what this adds.
+
+- [**Gremlins tracker**](https://marketplace.visualstudio.com/items?itemName=nhoizey.gremlins) -- the long-standing VS Code option for surfacing invisible and lookalike characters. General-purpose, not AI-specific, no phrase rules.
+- [**Invisible AI Character Detector & Remover**](https://marketplace.visualstudio.com/items?itemName=proflead.invisible-ai-chart-detector) -- the closest single alternative on the character side. Targets AI-watermark invisibles (zero-widths, BOM, bidi, special spaces). Character-only, no phrase list.
+- [**Hidden Character Detector**](https://marketplace.visualstudio.com/items?itemName=YusufDanis.hidden-character-detector) -- security framing (ASCII smuggling, prompt-injection payloads) rather than style.
+- [**LanguageTool Linter**](https://marketplace.visualstudio.com/items?itemName=davidlday.languagetool-linter) -- grammar and style for prose in VS Code. Doesn't target LLM tells specifically.
+- [**Sloppy Joe**](https://sloppyjoe.io/) and [**SlopDetector**](https://slopdetector.org/) -- web-based paste-in tools for LLM phrase detection. No editor integration.
+
+What this extension combines that the others don't: invisible Unicode **and** AI-style punctuation **and** curated LLM phrase packs, all as inline diagnostics on `markdown` and `plaintext`, with workspace- and user-level rule overrides.
