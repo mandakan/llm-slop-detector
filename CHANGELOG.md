@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.2.0...llm-slop-detector-v0.3.0) (2026-04-23)
+
+
+### Features
+
+* add "Open settings" command ([3de9da1](https://github.com/mandakan/llm-slop-detector/commit/3de9da103a888d251e01df6972b7b438b369e7aa))
+* add opt-in rule packs (academic, cliches, fiction, claudeisms, structural) ([1b7f4bb](https://github.com/mandakan/llm-slop-detector/commit/1b7f4bbf5bd90490fe8ee6331d80947ed68449a0))
+* first-run onboarding toast and README reorder ([e69500d](https://github.com/mandakan/llm-slop-detector/commit/e69500dc86800763c6c2d77b1266715c669d4853))
+* rule packs, onboarding, and marketplace publish prep ([4bb3cce](https://github.com/mandakan/llm-slop-detector/commit/4bb3cce2197ae083d71b2640c066ba559a7bca2b))
+
 ## [0.2.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.1.0...llm-slop-detector-v0.2.0) (2026-04-23)
 
 
