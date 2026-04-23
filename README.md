@@ -19,6 +19,14 @@ A VS Code extension that flags invisible Unicode, AI-style punctuation, and tell
 - Status-bar slop counter for the active file, click to toggle
 - No bundler, no runtime dependencies, no telemetry
 
+## Example
+
+The following sentence is intentionally sloppy. Open this README inside VS Code with the extension enabled and the quoted line below should light up with several diagnostics at once -- an em dash, curly quotes, and a handful of telltale LLM phrases:
+
+> “It’s worth noting” — we’ll delve into the rich tapestry of ideas.
+
+The em dash and curly quotes have one-click quick fixes. The phrases are flagged for you to reword by hand, because "delve" has no single right replacement.
+
 ## What it flags
 
 **Warnings (yellow):** zero-width characters, non-breaking spaces, BOM, line and paragraph separators. Stuff that hides in the text and wrecks diffs.
