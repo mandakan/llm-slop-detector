@@ -81,13 +81,37 @@ export function scanText(text: string, rules: RuleSet, language: Language): Find
 // language isn't supported and the file should not be scanned at all.
 function computeExcludedRanges(text: string, language: Language): Range[] | null {
   if (language === 'markdown') return computeMarkdownExclusions(text);
-  if (language === 'plaintext') return [];
+  if (language === 'plaintext' || language === 'scminput') return [];
+  if (language === 'git-commit') return computeGitCommitExclusions(text);
 
   const commentScanner = getCommentScanner(language);
   if (commentScanner === null) return null;
 
   const comments = mergeRanges(commentScanner(text));
   return invertRanges(comments, text.length);
+}
+
+// Skip '#' comment lines (stripped by git before commit) and everything after
+// the verbose-commit scissors marker ("# ------------------------ >8 ---...").
+function computeGitCommitExclusions(text: string): Range[] {
+  const ranges: Range[] = [];
+  const scissorsRe = /^#\s*-+\s*>8\s*-+/;
+  let i = 0;
+  while (i <= text.length) {
+    const nl = text.indexOf('\n', i);
+    const lineEnd = nl === -1 ? text.length : nl;
+    const line = text.slice(i, lineEnd);
+    if (scissorsRe.test(line)) {
+      ranges.push([i, text.length]);
+      break;
+    }
+    if (line.startsWith('#')) {
+      ranges.push([i, nl === -1 ? text.length : nl + 1]);
+    }
+    if (nl === -1) break;
+    i = nl + 1;
+  }
+  return mergeRanges(ranges);
 }
 
 function invertRanges(ranges: Range[], textLen: number): Range[] {

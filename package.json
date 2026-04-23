@@ -39,6 +39,8 @@
   "activationEvents": [
     "onLanguage:markdown",
     "onLanguage:plaintext",
+    "onLanguage:git-commit",
+    "onLanguage:scminput",
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
@@ -117,6 +119,11 @@
           "type": "boolean",
           "default": false,
           "description": "Scan comments and docstrings in source code files for LLM slop. Off by default; enable to widen scanning beyond markdown and plaintext."
+        },
+        "llmSlopDetector.scanCommitMessages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan Git commit editor buffers (git-commit) and VS Code's Source Control input box (scminput). On by default -- commit messages are short and findings are actionable. Turn off to silence diagnostics in those buffers."
         },
         "llmSlopDetector.codeCommentLanguages": {
           "type": "array",
