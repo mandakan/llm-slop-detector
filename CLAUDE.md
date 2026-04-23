@@ -68,13 +68,26 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 
 ## Commit convention
 
-**Conventional Commits required**. release-please parses commit messages to decide version bumps and CHANGELOG entries.
+**Conventional Commits required, on EVERY commit that lands on `main`.** The repo merges PRs via merge-commit (squash and rebase are disabled), so each commit you push is preserved on `main` individually and is scanned by release-please.
 
 - `feat: ...`: minor bump (e.g. 0.2.0 -> 0.3.0)
 - `fix: ...`: patch bump (e.g. 0.2.0 -> 0.2.1)
 - `feat!: ...` or `BREAKING CHANGE:` in body: minor bump (pre-1.0 rule, see below)
 - `chore: ...`, `docs: ...`, `ci: ...`, `refactor: ...`, `test: ...`: no version bump, may appear in CHANGELOG "Other" section
 - Non-conventional commits are silently ignored by release-please. Don't use them for user-facing changes.
+
+### Branch hygiene before merge
+
+**This matters because there's no squash safety net.** Whatever is in the branch at merge time is what lands on `main`.
+
+Hard rules for any PR branch before clicking Merge:
+
+1. Every commit message starts with a Conventional Commit type. No exceptions. Messages that don't are invisible to release-please and just clutter `main`.
+2. No `wip`, `fix typo`, `address review`, `.`, or similar scratch commits. Fold them into the commit they fix up via `git commit --fixup <sha>` + `git rebase -i --autosquash origin/main`.
+3. Each commit should be a self-contained, buildable unit -- prefer several small `feat:` / `fix:` / `refactor:` commits over one giant one, but don't ship broken intermediate states either.
+4. Rewrite history only on the feature branch, never on `main`. Push rewrites with `git push --force-with-lease`, never plain `--force`.
+
+Self-check before merging: `git log --oneline origin/main..HEAD` should read like a clean CHANGELOG preview. If it doesn't, rebase.
 
 ### Pre-1.0 bumping
 

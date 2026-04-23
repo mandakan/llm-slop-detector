@@ -14,10 +14,42 @@ F5 in VS Code launches an Extension Development Host with the extension loaded. 
 ## Branching and PRs
 
 - `main` is protected. No direct pushes.
-- Work on a feature branch, open a PR, let CI pass, merge via **merge commit**.
+- Work on a feature branch, open a PR, let CI pass, merge via **merge commit** (the repo has squash and rebase disabled -- this is intentional).
 - Every commit on your feature branch ends up on `main` individually, so **every commit message must be a Conventional Commit** -- not just the PR title.
 - The PR title must also be a Conventional Commit (enforced by the `pr-title` CI check).
-- Keep the branch tidy: rebase, squash, or `git commit --fixup` interactively before opening (or before merging) so the final commit series reads well in the CHANGELOG. Don't leave `wip` / `fix typo` commits in the merged set.
+
+## Cleaning up your branch before merge
+
+This repo uses merge-commit merging, so **the commits you push are the commits that end up on `main` and in the CHANGELOG**. There is no squash step to paper over messy history. Clean the branch yourself before merging.
+
+Before hitting "Merge":
+
+1. Every commit message must start with a Conventional Commit type (`feat:`, `fix:`, `docs:`, `chore:`, `ci:`, `refactor:`, `test:`). Non-conventional messages are silently dropped by release-please -- they won't show up in the CHANGELOG at all.
+2. No `wip`, `.`, `fix typo`, `address review`, or similar placeholder commits may remain. Fold them into the commit they fix up.
+3. Each commit should be a self-contained, buildable unit that passes CI on its own if possible.
+
+How to clean up:
+
+```bash
+# Rewrite the last N commits (reorder, squash, reword).
+git rebase -i origin/main
+
+# Or target a specific commit for fixup while you're still working.
+git commit --fixup <sha>
+git rebase -i --autosquash origin/main
+
+# Rewrite just the most recent message.
+git commit --amend
+
+# Push the rewritten history.
+git push --force-with-lease
+```
+
+Use `--force-with-lease` (not `--force`) when you've rewritten history -- it refuses the push if someone else has updated the branch remotely, saving you from clobbering their work.
+
+Do **not** rewrite history on `main` -- only on your feature branch, only before merge.
+
+A quick self-check before clicking merge: `git log --oneline origin/main..HEAD` should show a list of commits that would each read sensibly as CHANGELOG entries.
 
 ## Commit / PR title convention
 
