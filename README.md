@@ -13,7 +13,7 @@ A VS Code extension that flags invisible Unicode, AI-style punctuation, and tell
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
-- Configurable phrase rules: ~40 built-in core rules plus five opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`) totalling 285+ curated regex patterns
+- Configurable phrase rules: ~40 built-in core rules plus six opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`) totalling 285+ curated regex patterns
 - Per-workspace overrides via `.llmsloprc.json` and per-user overrides via settings
 - One-click quick fixes for deterministic character replacements, plus a "fix all" action
 - Status-bar slop counter for the active file, click to toggle
@@ -71,6 +71,7 @@ The core list is deliberately conservative: ~40 phrase rules covering the buzzwo
 - **`fiction`** -- fiction and creative-writing tells (breath hitched, heart hammering, shivers down spine, chestnut eyes, LLM-cliche character names). **Includes adult-fiction markers.** Derived from [`SicariusSicariiStuff/SLOP_Detector`](https://github.com/SicariusSicariiStuff/SLOP_Detector) (Apache-2.0).
 - **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
 - **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.
+- **`security`** -- LLM-weaponized invisibles above the BMP: tag characters (U+E0020-U+E007F, used in ASCII-smuggler prompt injection) and variation selectors (U+FE00-U+FE0E + U+E0100-U+E01EF, used for arbitrary-data smuggling in emoji and CJK). Severity `error`. Skips U+FE0F (emoji presentation selector) to avoid false positives. Opt in if you copy-paste LLM output into files you don't fully trust.
 
 Enable one or more in your settings:
 

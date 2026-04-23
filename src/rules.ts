@@ -4,7 +4,7 @@ import * as path from 'path';
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
-export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural'] as const;
+export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural', 'security'] as const;
 export type BuiltinPack = typeof BUILTIN_PACKS[number];
 
 export type CharRule = {
@@ -73,14 +73,22 @@ function parseSeverity(s: unknown, fallback: vscode.DiagnosticSeverity): vscode.
 }
 
 // Chars in the invisible/zero-width ranges are dangerous (hide in text,
-// break diffs); visible punctuation is merely suspicious.
+// break diffs, enable Trojan Source attacks); visible punctuation is merely suspicious.
 function defaultCharSeverity(char: string): vscode.DiagnosticSeverity {
-  const code = char.charCodeAt(0);
+  const code = char.codePointAt(0)!;
   const invisible =
+    code === 0x00AD ||
+    code === 0x00A0 ||
+    code === 0x1160 ||
+    code === 0x180E ||
     (code >= 0x200B && code <= 0x200F) ||
+    (code >= 0x202A && code <= 0x202E) ||
+    code === 0x202F ||
     code === 0x2028 || code === 0x2029 ||
-    code === 0x2060 || code === 0xFEFF ||
-    code === 0x00A0 || code === 0x202F;
+    code === 0x2060 ||
+    (code >= 0x2066 && code <= 0x2069) ||
+    code === 0x3164 ||
+    code === 0xFEFF;
   return invisible ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information;
 }
 
@@ -97,7 +105,7 @@ function ingestList(raw: RawList, origin: string, target: RuleSet): void {
         char: charStr,
         name: typeof c.name === 'string'
           ? c.name
-          : `Unknown char (U+${charStr.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`,
+          : `Unknown char (U+${charStr.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`,
         severity: parseSeverity(c.severity, defaultCharSeverity(charStr)),
         replacement: typeof c.replacement === 'string' ? c.replacement : undefined,
         suggestion: typeof c.suggestion === 'string' ? c.suggestion : undefined,
@@ -212,7 +220,7 @@ export function loadRules(extensionUri: vscode.Uri): RuleSet {
     } else {
       rules.chars.set(char, {
         char,
-        name: `User-defined (U+${char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`,
+        name: `User-defined (U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`,
         severity: defaultCharSeverity(char),
         replacement,
         source: 'settings.json',

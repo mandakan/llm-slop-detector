@@ -64,14 +64,16 @@
               "cliches",
               "fiction",
               "claudeisms",
-              "structural"
+              "structural",
+              "security"
             ],
             "enumDescriptions": [
               "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
               "General LLM cliche adjectives/nouns/verbs (derived from nanxstats/llm-cliches, MIT)",
               "Fiction and creative-writing LLM tells, including NSFW markers (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
-              "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary"
+              "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary",
+              "Flags LLM-weaponized invisibles above the BMP: tag chars (ASCII-smuggler prompt injection) and variation selectors (arbitrary-data smuggling). Severity: error."
             ]
           },
           "default": [],
