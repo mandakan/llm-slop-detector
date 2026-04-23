@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { CharRule, RuleSet, Severity } from './types';
+import { CharRule, PhraseRule, RuleSet, Severity, SeverityOverride } from './types';
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
@@ -14,6 +14,7 @@ export type LoadOptions = {
   localRulePaths: string[];
   userPhrases: string[];
   charReplacements: Record<string, string>;
+  severityOverrides: Record<string, SeverityOverride>;
 };
 
 type RawCharRule = {
@@ -144,12 +145,133 @@ function buildCharRegex(chars: Map<string, CharRule>): RegExp {
   return new RegExp('[' + body + ']', 'gu');
 }
 
+function charCodepointSelector(char: string): string {
+  return `char:U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}`;
+}
+
+// Normalize `char:u+2014` / `char:U+2014` / `char:U+02014` to a single canonical
+// key so lookups don't depend on user casing or zero-padding. Literal char keys
+// (`char:—`) and non-char selectors pass through unchanged.
+function normalizeOverrideKey(key: string): string {
+  if (!key.startsWith('char:')) return key;
+  const rest = key.slice(5);
+  const m = /^[uU]\+([0-9a-fA-F]+)$/.exec(rest);
+  if (!m) return key;
+  const cp = parseInt(m[1], 16);
+  if (Number.isNaN(cp)) return key;
+  return `char:U+${cp.toString(16).toUpperCase().padStart(4, '0')}`;
+}
+
+function parseSeverityOverrideValue(v: unknown): SeverityOverride | null {
+  if (v === 'off') return 'off';
+  if (v === 'error' || v === 'warning' || v === 'hint') return v;
+  if (v === 'information' || v === 'info') return 'information';
+  return null;
+}
+
+// Canonicalize user-provided override map: normalize char selector keys and
+// validate/coerce values. Invalid values are dropped with a console warning.
+export function parseSeverityOverrides(raw: Record<string, unknown> | undefined | null): Record<string, SeverityOverride> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Record<string, SeverityOverride> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const parsed = parseSeverityOverrideValue(value);
+    if (parsed === null) {
+      console.warn(`[LLM Slop] invalid severity in severityOverrides for "${key}": ${String(value)}`);
+      continue;
+    }
+    out[normalizeOverrideKey(key)] = parsed;
+  }
+  return out;
+}
+
+function resolveCharOverride(
+  rule: CharRule,
+  overrides: Record<string, SeverityOverride>,
+): SeverityOverride | undefined {
+  // Most specific: rule-level. Literal first so `char:—: hint` beats
+  // `char:U+2014: off` when both are present.
+  const literal = `char:${rule.char}`;
+  if (literal in overrides) return overrides[literal];
+  const cp = charCodepointSelector(rule.char);
+  if (cp in overrides) return overrides[cp];
+  // Pack-level (source is `pack:<name>` for built-in packs).
+  if (rule.source.startsWith('pack:') && rule.source in overrides) return overrides[rule.source];
+  // Source-level.
+  const src = `source:${rule.source}`;
+  if (src in overrides) return overrides[src];
+  return undefined;
+}
+
+function resolvePhraseOverride(
+  rule: PhraseRule,
+  overrides: Record<string, SeverityOverride>,
+): SeverityOverride | undefined {
+  const phraseKey = `phrase:${rule.pattern}`;
+  if (phraseKey in overrides) return overrides[phraseKey];
+  if (rule.source.startsWith('pack:') && rule.source in overrides) return overrides[rule.source];
+  const src = `source:${rule.source}`;
+  if (src in overrides) return overrides[src];
+  return undefined;
+}
+
+function applySeverityOverrides(
+  rules: RuleSet,
+  overrides: Record<string, SeverityOverride>,
+): void {
+  if (Object.keys(overrides).length === 0) return;
+
+  let applied = 0;
+
+  const charsToDelete: string[] = [];
+  for (const [char, rule] of rules.chars) {
+    const ov = resolveCharOverride(rule, overrides);
+    if (ov === undefined) continue;
+    applied++;
+    if (ov === 'off') charsToDelete.push(char);
+    else rules.chars.set(char, { ...rule, severity: ov });
+  }
+  for (const c of charsToDelete) rules.chars.delete(c);
+
+  const remainingPhrases: PhraseRule[] = [];
+  for (const phrase of rules.phrases) {
+    const ov = resolvePhraseOverride(phrase, overrides);
+    if (ov === undefined) {
+      remainingPhrases.push(phrase);
+      continue;
+    }
+    applied++;
+    if (ov === 'off') continue;
+    remainingPhrases.push({ ...phrase, severity: ov });
+  }
+  rules.phrases = remainingPhrases;
+
+  // Recompute per-source counts so the rule-sources quick pick reflects
+  // effective rule counts rather than raw ingest counts.
+  const countBySource = new Map<string, { chars: number; phrases: number }>();
+  const bump = (name: string, kind: 'chars' | 'phrases') => {
+    const entry = countBySource.get(name) ?? { chars: 0, phrases: 0 };
+    entry[kind]++;
+    countBySource.set(name, entry);
+  };
+  for (const r of rules.chars.values()) bump(r.source, 'chars');
+  for (const r of rules.phrases) bump(r.source, 'phrases');
+  for (const src of rules.sources) {
+    const c = countBySource.get(src.name);
+    src.charCount = c?.chars ?? 0;
+    src.phraseCount = c?.phrases ?? 0;
+  }
+
+  rules.overridesApplied = applied;
+}
+
 export function loadRules(opts: LoadOptions): RuleSet {
   const rules: RuleSet = {
     chars: new Map(),
     phrases: [],
     sources: [],
     charRegex: /(?!)/g,
+    overridesApplied: 0,
   };
 
   if (opts.useBuiltin) {
@@ -197,6 +319,8 @@ export function loadRules(opts: LoadOptions): RuleSet {
       });
     }
   }
+
+  applySeverityOverrides(rules, opts.severityOverrides);
 
   rules.charRegex = buildCharRegex(rules.chars);
   return rules;

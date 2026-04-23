@@ -158,12 +158,41 @@ Attribution and license texts for each pack's source are in [`THIRD_PARTY_NOTICE
 
 ### Tuning a pack
 
-Packs are merged after the core list, so a pack entry wins if it targets the same char as core. Phrase rules accumulate. If a specific pack rule is too noisy for your writing, either:
-
-1. Disable the whole pack (remove from `enabledPacks`), or
-2. Keep the pack enabled and override locally via a `.llmsloprc.json` file at your workspace root -- a later layer's chars override earlier layers on the same character; phrases are additive, so there's no way to silence a single phrase without forking the pack.
+Packs are merged after the core list, so a pack entry wins if it targets the same char as core. Phrase rules accumulate. If a specific pack rule is too noisy for your writing, use `llmSlopDetector.severityOverrides` (see [Severity overrides](#severity-overrides)) to downgrade or disable it from one place, without forking the pack.
 
 If a whole pack is unusable in your workflow, file an issue.
+
+## Severity overrides
+
+`llmSlopDetector.severityOverrides` is a map from a rule selector to a severity level (or `off` to disable the rule entirely). Use it to downgrade a noisy pack, silence one rule, or promote a source that matters more in your repo -- all from a single setting, no fork needed.
+
+```json
+"llmSlopDetector.severityOverrides": {
+  "pack:academic": "hint",
+  "phrase:\\bdelve(s|d|ing)?\\b": "off",
+  "char:U+2014": "information",
+  "source:built-in": "warning"
+}
+```
+
+Selectors (same shape as the inline-ignore directive specs):
+
+- `pack:<name>` -- every rule from a built-in pack (`pack:academic`, `pack:cliches`, etc.)
+- `phrase:<pattern>` -- matches a phrase rule's `pattern` field exactly. Hover over a flagged phrase to copy its pattern.
+- `char:<literal>` or `char:U+XXXX` -- matches a char rule by literal or codepoint.
+- `source:<name>` -- matches `RuleSource.name` (`built-in`, `pack:academic`, `user settings`, or the `name` field from your `.llmsloprc.json`).
+
+Values: `error`, `warning`, `information`, `hint`, or `off`. Invalid values are dropped with a console warning.
+
+Precedence: most-specific wins. `phrase:` / `char:` beats `pack:`, which beats `source:`. If two selectors of the same specificity both match (for example `char:—` and `char:U+2014`), the literal form wins.
+
+The CLI takes the same settings via a repeatable `--severity-override key=value`:
+
+```bash
+llm-slop --severity-override pack:academic=hint --severity-override 'phrase:\bdelve(s|d|ing)?\b=off' README.md
+```
+
+The "Show loaded rule sources" command reports how many rules were affected by overrides on a trailing line.
 
 ## Configuration
 
@@ -193,6 +222,8 @@ Rules merge from these layers (later overrides earlier on the same char or patte
 2. Optional built-in packs listed in `llmSlopDetector.enabledPacks`
 3. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded). Skipped in untrusted workspaces -- see [Workspace trust](#workspace-trust).
 4. User settings
+
+After merging, `llmSlopDetector.severityOverrides` is applied -- it can downgrade or disable any rule from any layer without editing the source. See [Severity overrides](#severity-overrides).
 
 ### Workspace trust
 
@@ -252,6 +283,7 @@ Options:
 - `--no-builtin` -- skip the built-in core rule list
 - `--config <path>` -- explicit `.llmsloprc.json` path (default: nearest ancestor of cwd)
 - `-s, --severity <level>` -- fail threshold: `error | warning | information | hint` (default `information`)
+- `--severity-override <selector>=<level>` -- override severity for a selector (see [Severity overrides](#severity-overrides)). Repeatable. Level may be `off` to disable.
 - `--scan-comments` -- also scan comments and docstrings in source code files (`.ts`, `.py`, `.rs`, etc). Off by default.
 - `-q, --quiet` -- suppress the summary line
 - `-h, --help` / `-v, --version`

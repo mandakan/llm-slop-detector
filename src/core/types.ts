@@ -1,5 +1,7 @@
 export type Severity = 'error' | 'warning' | 'information' | 'hint';
 
+export type SeverityOverride = Severity | 'off';
+
 export const SEVERITY_RANK: Record<Severity, number> = {
   error: 0,
   warning: 1,
@@ -38,6 +40,7 @@ export type RuleSet = {
   phrases: PhraseRule[];
   sources: RuleSource[];
   charRegex: RegExp;
+  overridesApplied: number;
 };
 
 export type Finding = {

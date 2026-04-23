@@ -108,6 +108,15 @@
           },
           "description": "Override quick-fix replacements for specific characters. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. User overrides win over built-in and local-file rules."
         },
+        "llmSlopDetector.severityOverrides": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["error", "warning", "information", "hint", "off"]
+          },
+          "description": "Override severity for specific rules, packs, or sources. Selector keys: pack:<name> (e.g. pack:academic), phrase:<exact-pattern>, char:<literal> or char:U+XXXX, source:<name>. Values: error | warning | information | hint | off (off disables the rule entirely). Precedence: phrase/char > pack > source -- most specific wins. Example: {\"pack:academic\": \"hint\", \"phrase:\\\\bdelve(s|d|ing)?\\\\b\": \"off\"}."
+        },
         "llmSlopDetector.exclude": {
           "type": "array",
           "items": {

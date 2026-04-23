@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BUILTIN_PACKS, LOCAL_RULES_FILENAME, loadRules as coreLoadRules } from './core/rules';
+import { BUILTIN_PACKS, LOCAL_RULES_FILENAME, loadRules as coreLoadRules, parseSeverityOverrides } from './core/rules';
 import { RuleSet, Severity } from './core/types';
 
 export { LOCAL_RULES_FILENAME, BUILTIN_PACKS };
@@ -38,5 +38,6 @@ export function loadRules(extensionUri: vscode.Uri): RuleSet {
     localRulePaths: getLocalRulePaths(),
     userPhrases: cfg.get<string[]>('phrases', []),
     charReplacements: cfg.get<Record<string, string>>('charReplacements', {}),
+    severityOverrides: parseSeverityOverrides(cfg.get<Record<string, unknown>>('severityOverrides', {})),
   });
 }
