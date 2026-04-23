@@ -37,40 +37,9 @@ Right-aligned status bar item shows the slop count for the active `markdown` or 
 
 Click toggles the detector. Hidden when the active editor is a different language.
 
-## Install (from a GitHub Release)
-
-Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
-
-```bash
-code --install-extension llm-slop-detector-<version>.vsix
-```
-
-## Install (from source)
-
-```bash
-git clone https://github.com/mandakan/llm-slop-detector.git
-cd llm-slop-detector
-npm install
-npm run compile
-npm run package
-code --install-extension llm-slop-detector-*.vsix
-```
-
-Reload VS Code. Open any `.md` or `.txt` file. Diagnostics appear in the Problems panel and as squiggles inline.
-
-## Configuration
-
-Settings (Cmd/Ctrl+, then search "LLM Slop"):
-
-- `llmSlopDetector.enabled`: toggle on/off
-- `llmSlopDetector.useBuiltinRules`: load the shipped built-in list (default `true`). Turn off to rely only on local rule files and user settings.
-- `llmSlopDetector.enabledPacks`: opt-in extra rule packs, see [Rule packs](#rule-packs) below. Default: `[]`.
-- `llmSlopDetector.phrases`: additional regex patterns, appended to the built-in list.
-- `llmSlopDetector.charReplacements`: override quick-fix replacements per character.
-
 ## Rule packs
 
-The core list (`builtin-rules.json`) is deliberately conservative: ~40 phrase rules covering the buzzwords everyone agrees on (`delve`, `leverage`, `seamless`, `paradigm shift`, etc.). For more coverage, opt into one or more packs via `llmSlopDetector.enabledPacks`:
+The core list is deliberately conservative: ~40 phrase rules covering the buzzwords everyone agrees on (`delve`, `leverage`, `seamless`, `paradigm shift`, etc.). For more coverage, opt into one or more packs via `llmSlopDetector.enabledPacks`:
 
 - **`academic`** -- words over-represented in LLM-authored academic writing (`bolster`, `elucidate`, `facilitate`, `showcase`, `noteworthy`, ~90 entries). Severity `hint` so the Problems panel stays usable. Derived from [`berenslab/llm-excess-vocab`](https://github.com/berenslab/llm-excess-vocab) (MIT).
 - **`cliches`** -- general LLM cliche vocabulary (`captivating`, `pinnacle`, `galvanize`, journey/landscape/symphony metaphors). Derived from [`nanxstats/llm-cliches`](https://github.com/nanxstats/llm-cliches) (MIT).
@@ -95,11 +64,22 @@ Packs are merged after the core list, so a pack entry wins if it targets the sam
 
 If a whole pack is unusable in your workflow, file an issue.
 
+## Configuration
+
+Settings (Cmd/Ctrl+, then search "LLM Slop"):
+
+- `llmSlopDetector.enabled`: toggle on/off
+- `llmSlopDetector.useBuiltinRules`: load the shipped built-in list (default `true`). Turn off to rely only on local rule files and user settings.
+- `llmSlopDetector.enabledPacks`: opt-in extra rule packs (see [Rule packs](#rule-packs)). Default: `[]`.
+- `llmSlopDetector.phrases`: additional regex patterns, appended to the built-in list.
+- `llmSlopDetector.charReplacements`: override quick-fix replacements per character.
+
 ## Commands
 
 `Cmd/Ctrl+Shift+P`:
 - **LLM Slop Detector: Toggle**: enable/disable
 - **LLM Slop Detector: Show loaded rule sources**: quick pick listing every active source with name, version, and rule counts
+- **LLM Slop Detector: Show onboarding**: re-show the onboarding prompt (useful if you dismissed it too early)
 
 ## Rule sources
 
@@ -138,3 +118,26 @@ Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
 "llmSlopDetector.phrases": ["\\byour own pet phrase\\b"],
 "llmSlopDetector.charReplacements": { "--": " - " }
 ```
+
+## Install
+
+### From a GitHub Release
+
+Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
+
+```bash
+code --install-extension llm-slop-detector-<version>.vsix
+```
+
+### From source
+
+```bash
+git clone https://github.com/mandakan/llm-slop-detector.git
+cd llm-slop-detector
+npm install
+npm run compile
+npm run package
+code --install-extension llm-slop-detector-*.vsix
+```
+
+Reload VS Code. Open any `.md` or `.txt` file. Diagnostics appear in the Problems panel and as squiggles inline.
