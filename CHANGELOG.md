@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.4.0...llm-slop-detector-v0.5.0) (2026-04-23)
+
+
+### Features
+
+* add "Scan selection" command for one-off checks ([#32](https://github.com/mandakan/llm-slop-detector/issues/32)) ([88ccd41](https://github.com/mandakan/llm-slop-detector/commit/88ccd41ace395bb6cc59b822ed0a626fa4e20dcc))
+* link diagnostics to rule documentation ([#34](https://github.com/mandakan/llm-slop-detector/issues/34)) ([683fefb](https://github.com/mandakan/llm-slop-detector/commit/683fefb0098359baca7e6139362d154ed7364e4a))
+* opt-in scanning of code comments and docstrings ([#30](https://github.com/mandakan/llm-slop-detector/issues/30)) ([cd73cdd](https://github.com/mandakan/llm-slop-detector/commit/cd73cdd701a55d2112ef20f3e254f22e4c8ae547))
+* ship CLI and pre-commit hook sharing the extension's rule engine ([#28](https://github.com/mandakan/llm-slop-detector/issues/28)) ([37575cb](https://github.com/mandakan/llm-slop-detector/commit/37575cb6c2ed2283b3c455d1df486603b489dc5c))
+* show rule selector and ignore snippet on hover ([#33](https://github.com/mandakan/llm-slop-detector/issues/33)) ([6a36158](https://github.com/mandakan/llm-slop-detector/commit/6a36158536eac724654d73fc06e980fe6e6b16ec))
+* skip code fences, link URLs, and ignore directives in markdown ([#26](https://github.com/mandakan/llm-slop-detector/issues/26)) ([26b5f40](https://github.com/mandakan/llm-slop-detector/commit/26b5f40d17b0097a24b727e219b4112af31d5f78))
+
+
+### Bug Fixes
+
+* list all six built-in packs in the onboarding toast ([#31](https://github.com/mandakan/llm-slop-detector/issues/31)) ([b3e8c67](https://github.com/mandakan/llm-slop-detector/commit/b3e8c67ed956614173a09677b3fc4923fc15ca32))
+* skip local rule files on untrusted workspaces ([#35](https://github.com/mandakan/llm-slop-detector/issues/35)) ([c0e217e](https://github.com/mandakan/llm-slop-detector/commit/c0e217e206faa73ac01571402f2b97dc501f2f3a))
+
 ## [0.4.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.3.1...llm-slop-detector-v0.4.0) (2026-04-23)
 
 
