@@ -1,8 +1,8 @@
 # LLM Slop Detector
 
-[![Marketplace version](https://img.shields.io/visual-studio-marketplace/v/thias-se.llm-slop-detector?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
-[![Marketplace installs](https://img.shields.io/visual-studio-marketplace/i/thias-se.llm-slop-detector)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
-[![Marketplace rating](https://img.shields.io/visual-studio-marketplace/r/thias-se.llm-slop-detector)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Marketplace version](https://vsmarketplacebadges.dev/version-short/thias-se.llm-slop-detector.svg?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Marketplace installs](https://vsmarketplacebadges.dev/installs-short/thias-se.llm-slop-detector.svg)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Marketplace rating](https://vsmarketplacebadges.dev/rating-short/thias-se.llm-slop-detector.svg)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
 [![License: MIT](https://img.shields.io/github/license/mandakan/llm-slop-detector)](LICENSE)
 
 A VS Code extension that flags invisible Unicode, AI-style punctuation, and telltale LLM phrases in `markdown` and `plaintext` files.
