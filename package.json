@@ -75,6 +75,12 @@
           "type": "boolean",
           "default": true,
           "description": "Enable or disable the detector."
+        },
+        "llmSlopDetector.charReplacements": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": { "type": "string" },
+          "description": "Override character quick-fix replacements. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. Example: { \"—\": \" - \" } to wrap em-dash fixes with spaces. User overrides win over built-in defaults."
         }
       }
     },
