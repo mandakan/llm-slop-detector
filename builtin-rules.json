@@ -19,11 +19,11 @@
     { "char": "”", "name": "RIGHT DOUBLE QUOTATION MARK (U+201D)", "severity": "information", "replacement": "\"" },
     { "char": "‘", "name": "LEFT SINGLE QUOTATION MARK (U+2018)", "severity": "information", "replacement": "'" },
     { "char": "’", "name": "RIGHT SINGLE QUOTATION MARK (U+2019)", "severity": "information", "replacement": "'" },
-    { "char": "«", "name": "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00AB)", "severity": "information", "suggestion": "often legitimate in French/German — no default fix" },
-    { "char": "»", "name": "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00BB)", "severity": "information", "suggestion": "often legitimate in French/German — no default fix" },
-    { "char": "′", "name": "PRIME (U+2032)", "severity": "information", "suggestion": "used in measurements (5′10″) — no default fix" },
-    { "char": "″", "name": "DOUBLE PRIME (U+2033)", "severity": "information", "suggestion": "used in measurements (5′10″) — no default fix" },
-    { "char": "·", "name": "MIDDLE DOT (U+00B7)", "severity": "information", "suggestion": "legitimate in Catalan and list separators — no default fix" }
+    { "char": "«", "name": "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00AB)", "severity": "information", "suggestion": "often legitimate in French or German; no default fix" },
+    { "char": "»", "name": "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK (U+00BB)", "severity": "information", "suggestion": "often legitimate in French or German; no default fix" },
+    { "char": "′", "name": "PRIME (U+2032)", "severity": "information", "suggestion": "used in measurements (feet, arc-minutes); no default fix" },
+    { "char": "″", "name": "DOUBLE PRIME (U+2033)", "severity": "information", "suggestion": "used in measurements (inches, arc-seconds); no default fix" },
+    { "char": "·", "name": "MIDDLE DOT (U+00B7)", "severity": "information", "suggestion": "legitimate in Catalan and list separators; no default fix" }
   ],
   "phrases": [
     { "pattern": "\\bdelve(s|d|ing)?\\b", "reason": "LLM filler" },

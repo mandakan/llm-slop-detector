@@ -40,7 +40,7 @@ function charDiagnosticMessage(def: CharRule): string {
   } else if (def.suggestion) {
     parts.push(def.suggestion);
   }
-  return `${parts.join(' — ')} [${def.source}]`;
+  return `${parts.join(' - ')} [${def.source}]`;
 }
 
 function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
@@ -68,7 +68,7 @@ function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
       if (m[0].length === 0) { p.regex.lastIndex++; continue; }
       const start = doc.positionAt(m.index);
       const end = doc.positionAt(m.index + m[0].length);
-      const reasonBit = p.reason ? ` — ${p.reason}` : '';
+      const reasonBit = p.reason ? ` - ${p.reason}` : '';
       const d = new vscode.Diagnostic(
         new vscode.Range(start, end),
         `LLM-style phrase: "${m[0]}"${reasonBit} [${p.source}]`,
@@ -174,7 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
     const enabled = vscode.workspace.getConfiguration('llmSlopDetector').get<boolean>('enabled', true);
     if (!enabled) {
       status.text = '$(circle-slash) Slop off';
-      status.tooltip = 'LLM Slop Detector is disabled — click to enable';
+      status.tooltip = 'LLM Slop Detector is disabled. Click to enable.';
       status.backgroundColor = undefined;
       status.show();
       return;
@@ -186,13 +186,13 @@ export function activate(context: vscode.ExtensionContext) {
     const total = chars + phrases;
     if (total === 0) {
       status.text = '$(check) No slop';
-      status.tooltip = 'LLM Slop Detector: no issues in this file — click to disable';
+      status.tooltip = 'LLM Slop Detector: no issues in this file. Click to disable.';
       status.backgroundColor = undefined;
     } else {
       status.text = `$(warning) ${total} slop`;
       const charPart = `${chars} character${chars === 1 ? '' : 's'}`;
       const phrasePart = `${phrases} phrase${phrases === 1 ? '' : 's'}`;
-      status.tooltip = `LLM Slop Detector: ${charPart}, ${phrasePart} — click to disable`;
+      status.tooltip = `LLM Slop Detector: ${charPart}, ${phrasePart}. Click to disable.`;
       status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     }
     status.show();
@@ -247,7 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
       const items = RULES.sources.map(s => ({
         label: `$(list-unordered) ${s.name}${s.version ? ` v${s.version}` : ''}`,
         description: `${s.charCount} char${s.charCount === 1 ? '' : 's'}, ${s.phraseCount} phrase${s.phraseCount === 1 ? '' : 's'}`,
-        detail: s.description ? `${s.description} — ${s.origin}` : s.origin,
+        detail: s.description ? `${s.description} (${s.origin})` : s.origin,
       }));
       await vscode.window.showQuickPick(items, { title: 'LLM Slop Detector: loaded rule sources' });
     })
