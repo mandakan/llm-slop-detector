@@ -237,17 +237,59 @@ export function activate(context: vscode.ExtensionContext) {
     collection.set(doc.uri, scanDocument(doc, phraseRegexes));
   };
 
+  // Status bar indicator: count of issues in the active file, click to toggle.
+  const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  status.command = 'llmSlopDetector.toggle';
+  context.subscriptions.push(status);
+
+  const updateStatus = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !SUPPORTED_LANGS.has(editor.document.languageId)) {
+      status.hide();
+      return;
+    }
+    const enabled = vscode.workspace.getConfiguration('llmSlopDetector').get<boolean>('enabled', true);
+    if (!enabled) {
+      status.text = '$(circle-slash) Slop off';
+      status.tooltip = 'LLM Slop Detector is disabled — click to enable';
+      status.backgroundColor = undefined;
+      status.show();
+      return;
+    }
+    const diags = vscode.languages.getDiagnostics(editor.document.uri)
+      .filter(d => d.source === SOURCE);
+    const chars = diags.filter(d => d.code === 'char').length;
+    const phrases = diags.filter(d => d.code === 'phrase').length;
+    const total = chars + phrases;
+    if (total === 0) {
+      status.text = '$(check) No slop';
+      status.tooltip = 'LLM Slop Detector: no issues in this file — click to disable';
+      status.backgroundColor = undefined;
+    } else {
+      status.text = `$(warning) ${total} slop`;
+      const charPart = `${chars} character${chars === 1 ? '' : 's'}`;
+      const phrasePart = `${phrases} phrase${phrases === 1 ? '' : 's'}`;
+      status.tooltip = `LLM Slop Detector: ${charPart}, ${phrasePart} — click to disable`;
+      status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    }
+    status.show();
+  };
+
   // Scan already-open documents on activation.
   vscode.workspace.textDocuments.forEach(refresh);
+  updateStatus();
 
   context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument(refresh),
-    vscode.workspace.onDidChangeTextDocument(e => refresh(e.document)),
-    vscode.workspace.onDidCloseTextDocument(doc => collection.delete(doc.uri)),
+    vscode.workspace.onDidOpenTextDocument(doc => { refresh(doc); updateStatus(); }),
+    vscode.workspace.onDidChangeTextDocument(e => { refresh(e.document); updateStatus(); }),
+    vscode.workspace.onDidCloseTextDocument(doc => { collection.delete(doc.uri); updateStatus(); }),
+    vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
+    vscode.languages.onDidChangeDiagnostics(() => updateStatus()),
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration('llmSlopDetector')) {
         phraseRegexes = buildPhraseRegexes();
         vscode.workspace.textDocuments.forEach(refresh);
+        updateStatus();
       }
     }),
     vscode.languages.registerCodeActionsProvider(
