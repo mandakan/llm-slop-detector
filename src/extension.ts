@@ -228,7 +228,7 @@ export function activate(context: vscode.ExtensionContext) {
 // Versioned so we can re-trigger onboarding for material UX changes without
 // spamming users who have already seen the current version. Bump the suffix
 // when you want everyone to see the toast again.
-const ONBOARDING_KEY = 'llmSlopDetector.onboarding.v1';
+const ONBOARDING_KEY = 'llmSlopDetector.onboarding.v2';
 
 async function maybeShowOnboarding(context: vscode.ExtensionContext) {
   if (context.globalState.get<boolean>(ONBOARDING_KEY, false)) return;
@@ -241,7 +241,7 @@ async function showOnboarding(context: vscode.ExtensionContext) {
   const dismiss = 'Dismiss';
 
   const choice = await vscode.window.showInformationMessage(
-    'LLM Slop Detector is watching Markdown and plain-text files. Optional rule packs (academic, fiction, claudeisms, structural) add broader coverage -- opt into them in settings.',
+    'LLM Slop Detector is watching Markdown and plain-text files. Six optional rule packs (academic, cliches, fiction, claudeisms, structural, security) add broader coverage -- opt into them in settings.',
     openPacks,
     learnMore,
     dismiss,
