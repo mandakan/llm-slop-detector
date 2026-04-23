@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
-import { CharRule, LOCAL_RULES_FILENAME, RuleSet, loadRules } from './rules';
+import { LOCAL_RULES_FILENAME, RuleSet, loadRules, severityToVscode } from './rules';
+import { Language, scanText } from './core/scan';
 
 const SOURCE = 'LLM Slop';
-const SUPPORTED_LANGS = new Set(['markdown', 'plaintext']);
+const SUPPORTED_LANGS = new Set<Language>(['markdown', 'plaintext']);
 const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [
   { language: 'markdown' },
   { language: 'plaintext' },
@@ -10,306 +11,24 @@ const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [
 
 // Module-level mutable rule state. Rebuilt on config change / rule-file change
 // and scans read through it.
-let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [] };
-let CHAR_REGEX: RegExp = /(?!)/g;
-
-function rebuildCharRegex() {
-  if (RULES.chars.size === 0) {
-    CHAR_REGEX = /(?!)/g;
-    return;
-  }
-  // \u{...} requires the u flag but accepts astral code points (tag chars,
-  // high-plane variation selectors). Map keys for astral chars are
-  // UTF-16 surrogate pairs, so Map.get(m[0]) still resolves correctly.
-  const body = Array.from(RULES.chars.keys())
-    .map(c => '\\u{' + c.codePointAt(0)!.toString(16) + '}')
-    .join('');
-  CHAR_REGEX = new RegExp('[' + body + ']', 'gu');
-}
+let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(?!)/g };
 
 function getReplacement(char: string): string | undefined {
   return RULES.chars.get(char)?.replacement;
 }
 
-function charDiagnosticMessage(def: CharRule): string {
-  const parts = [def.name];
-  if (def.replacement !== undefined) {
-    const shown =
-      def.replacement === '' ? 'delete' :
-      def.replacement === '\n' ? 'newline' :
-      def.replacement === ' ' ? 'regular space' :
-      JSON.stringify(def.replacement);
-    parts.push(`fix: ${shown}`);
-  } else if (def.suggestion) {
-    parts.push(def.suggestion);
-  }
-  return `${parts.join(' - ')} [${def.source}]`;
-}
-
 function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
-  const diags: vscode.Diagnostic[] = [];
-  const text = doc.getText();
-
-  const excluded = doc.languageId === 'markdown' ? computeMarkdownExclusions(text) : [];
-  const suppressions = computeSuppressions(text, excluded);
-
-  // Characters.
-  CHAR_REGEX.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = CHAR_REGEX.exec(text)) !== null) {
-    const def = RULES.chars.get(m[0]);
-    if (!def) continue;
-    if (offsetInRanges(m.index, excluded)) continue;
-    if (isSuppressed(m.index, suppressions, 'char', m[0])) continue;
-    const start = doc.positionAt(m.index);
-    const end = doc.positionAt(m.index + m[0].length);
-    const d = new vscode.Diagnostic(new vscode.Range(start, end), charDiagnosticMessage(def), def.severity);
+  const lang = doc.languageId as Language;
+  if (!SUPPORTED_LANGS.has(lang)) return [];
+  const findings = scanText(doc.getText(), RULES, lang);
+  return findings.map(f => {
+    const start = doc.positionAt(f.offset);
+    const end = doc.positionAt(f.offset + f.length);
+    const d = new vscode.Diagnostic(new vscode.Range(start, end), f.message, severityToVscode(f.severity));
     d.source = SOURCE;
-    d.code = 'char';
-    diags.push(d);
-  }
-
-  // Phrases.
-  for (const p of RULES.phrases) {
-    p.regex.lastIndex = 0;
-    while ((m = p.regex.exec(text)) !== null) {
-      if (m[0].length === 0) { p.regex.lastIndex++; continue; }
-      if (offsetInRanges(m.index, excluded)) continue;
-      if (isSuppressed(m.index, suppressions, 'phrase', m[0], p.pattern)) continue;
-      const start = doc.positionAt(m.index);
-      const end = doc.positionAt(m.index + m[0].length);
-      const reasonBit = p.reason ? ` - ${p.reason}` : '';
-      const d = new vscode.Diagnostic(
-        new vscode.Range(start, end),
-        `LLM-style phrase: "${m[0]}"${reasonBit} [${p.source}]`,
-        p.severity
-      );
-      d.source = SOURCE;
-      d.code = 'phrase';
-      diags.push(d);
-    }
-  }
-
-  return diags;
-}
-
-// ---------------------------------------------------------------------------
-// Scope: markdown exclusions + inline ignore directives
-// ---------------------------------------------------------------------------
-
-type Range = [number, number];
-
-type Suppression = {
-  start: number;
-  end: number;
-  applies: (code: 'char' | 'phrase', matchText: string, rulePattern?: string) => boolean;
-};
-
-function mergeRanges(ranges: Range[]): Range[] {
-  if (ranges.length === 0) return ranges;
-  ranges.sort((a, b) => a[0] - b[0]);
-  const merged: Range[] = [[ranges[0][0], ranges[0][1]]];
-  for (let i = 1; i < ranges.length; i++) {
-    const last = merged[merged.length - 1];
-    const curr = ranges[i];
-    if (curr[0] <= last[1]) {
-      last[1] = Math.max(last[1], curr[1]);
-    } else {
-      merged.push([curr[0], curr[1]]);
-    }
-  }
-  return merged;
-}
-
-function offsetInRanges(offset: number, ranges: Range[]): boolean {
-  let lo = 0, hi = ranges.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const [s, e] = ranges[mid];
-    if (offset < s) hi = mid - 1;
-    else if (offset >= e) lo = mid + 1;
-    else return true;
-  }
-  return false;
-}
-
-// Line-based scan for fenced code blocks and YAML frontmatter, plus regex for
-// inline code spans and link URLs. Good enough for the 95% case without
-// pulling in a CommonMark parser.
-function computeMarkdownExclusions(text: string): Range[] {
-  const ranges: Range[] = [];
-
-  let i = 0;
-  let lineIdx = 0;
-  let inFence = false;
-  let fenceChar = '';
-  let fenceLen = 0;
-  let fenceStart = 0;
-  let inFrontmatter = false;
-  let frontmatterStart = 0;
-
-  while (i <= text.length) {
-    const nl = text.indexOf('\n', i);
-    const lineEnd = nl === -1 ? text.length : nl;
-    const line = text.slice(i, lineEnd);
-    const nextLineStart = nl === -1 ? text.length : nl + 1;
-
-    if (!inFence) {
-      if (lineIdx === 0 && line === '---') {
-        inFrontmatter = true;
-        frontmatterStart = i;
-      } else if (inFrontmatter && (line === '---' || line === '...')) {
-        ranges.push([frontmatterStart, nextLineStart]);
-        inFrontmatter = false;
-      } else if (!inFrontmatter) {
-        const m = line.match(/^ {0,3}(`{3,}|~{3,})/);
-        if (m) {
-          inFence = true;
-          fenceChar = m[1][0];
-          fenceLen = m[1].length;
-          fenceStart = i;
-        }
-      }
-    } else {
-      const closer = new RegExp('^ {0,3}' + (fenceChar === '`' ? '`' : '~') + '{' + fenceLen + ',}\\s*$');
-      if (closer.test(line)) {
-        ranges.push([fenceStart, nextLineStart]);
-        inFence = false;
-      }
-    }
-
-    if (nl === -1) break;
-    lineIdx++;
-    i = nextLineStart;
-  }
-
-  if (inFence) ranges.push([fenceStart, text.length]);
-
-  // Inline code spans (single-backtick, same line).
-  let m: RegExpExecArray | null;
-  const inlineCodeRe = /`[^`\n]+`/g;
-  while ((m = inlineCodeRe.exec(text)) !== null) {
-    ranges.push([m.index, m.index + m[0].length]);
-  }
-
-  // Link URLs: the (...) part of [text](url). Exclude the URL, keep the text.
-  const linkRe = /\[[^\]\n]*\]\(([^)\n]+)\)/g;
-  while ((m = linkRe.exec(text)) !== null) {
-    const parenOpen = m.index + m[0].lastIndexOf('(');
-    const parenClose = m.index + m[0].length - 1;
-    ranges.push([parenOpen + 1, parenClose]);
-  }
-
-  // Autolinks: <https://...>.
-  const autolinkRe = /<https?:\/\/[^>\s]+>/gi;
-  while ((m = autolinkRe.exec(text)) !== null) {
-    ranges.push([m.index, m.index + m[0].length]);
-  }
-
-  return mergeRanges(ranges);
-}
-
-function parseSuppressionSpecs(raw: string): Suppression['applies'] {
-  const specs = raw.trim().split(/\s+/).filter(Boolean);
-  if (specs.length === 0) return () => true;
-
-  const phraseSpecs: string[] = [];
-  const charSpecs: string[] = [];
-  for (const s of specs) {
-    if (s.startsWith('phrase:')) phraseSpecs.push(s.slice('phrase:'.length));
-    else if (s.startsWith('char:')) charSpecs.push(s.slice('char:'.length));
-  }
-
-  return (code, matchText, rulePattern) => {
-    if (code === 'phrase') {
-      return phraseSpecs.some(p => rulePattern === p);
-    }
-    return charSpecs.some(c => {
-      if (/^u\+/i.test(c)) {
-        const cp = parseInt(c.slice(2), 16);
-        return !Number.isNaN(cp) && matchText.codePointAt(0) === cp;
-      }
-      return matchText === c;
-    });
-  };
-}
-
-// <!-- slop-disable [specs] --> ... <!-- slop-enable -->
-// <!-- slop-disable-next-line [specs] -->
-// <!-- slop-disable-line [specs] -->
-// Specs: phrase:<pattern> or char:<literal|U+XXXX>. Multiple specs AND across
-// kinds but OR within a kind. No specs = suppress everything.
-function computeSuppressions(text: string, excluded: Range[]): Suppression[] {
-  const directiveRe = /<!--\s*slop-(disable-next-line|disable-line|disable|enable)\b([^>]*?)-->/gi;
-  type Directive = {
-    kind: 'disable' | 'enable' | 'disable-next-line' | 'disable-line';
-    applies: Suppression['applies'];
-    start: number;
-    end: number;
-  };
-  const directives: Directive[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = directiveRe.exec(text)) !== null) {
-    if (offsetInRanges(m.index, excluded)) continue;
-    directives.push({
-      kind: m[1].toLowerCase() as Directive['kind'],
-      applies: parseSuppressionSpecs(m[2] || ''),
-      start: m.index,
-      end: m.index + m[0].length,
-    });
-  }
-
-  const result: Suppression[] = [];
-  let blockStart: number | null = null;
-  let blockApplies: Suppression['applies'] | null = null;
-
-  for (const d of directives) {
-    if (d.kind === 'disable') {
-      if (blockStart === null) {
-        blockStart = d.end;
-        blockApplies = d.applies;
-      }
-    } else if (d.kind === 'enable') {
-      if (blockStart !== null && blockApplies !== null) {
-        result.push({ start: blockStart, end: d.start, applies: blockApplies });
-        blockStart = null;
-        blockApplies = null;
-      }
-    } else if (d.kind === 'disable-line') {
-      const lineStart = text.lastIndexOf('\n', d.start - 1) + 1;
-      const nl = text.indexOf('\n', d.end);
-      const lineEnd = nl === -1 ? text.length : nl;
-      result.push({ start: lineStart, end: lineEnd, applies: d.applies });
-    } else if (d.kind === 'disable-next-line') {
-      const nl = text.indexOf('\n', d.end);
-      if (nl === -1) continue;
-      const nextLineStart = nl + 1;
-      const nextNl = text.indexOf('\n', nextLineStart);
-      const nextLineEnd = nextNl === -1 ? text.length : nextNl;
-      result.push({ start: nextLineStart, end: nextLineEnd, applies: d.applies });
-    }
-  }
-
-  if (blockStart !== null && blockApplies !== null) {
-    result.push({ start: blockStart, end: text.length, applies: blockApplies });
-  }
-
-  return result;
-}
-
-function isSuppressed(
-  offset: number,
-  suppressions: Suppression[],
-  code: 'char' | 'phrase',
-  matchText: string,
-  rulePattern?: string
-): boolean {
-  for (const s of suppressions) {
-    if (offset >= s.start && offset < s.end && s.applies(code, matchText, rulePattern)) {
-      return true;
-    }
-  }
-  return false;
+    d.code = f.code;
+    return d;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -383,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const refresh = (doc: vscode.TextDocument) => {
     const enabled = vscode.workspace.getConfiguration('llmSlopDetector').get<boolean>('enabled', true);
-    if (!enabled || !SUPPORTED_LANGS.has(doc.languageId)) {
+    if (!enabled || !SUPPORTED_LANGS.has(doc.languageId as Language)) {
       collection.delete(doc.uri);
       return;
     }
@@ -396,7 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const updateStatus = () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor || !SUPPORTED_LANGS.has(editor.document.languageId)) {
+    if (!editor || !SUPPORTED_LANGS.has(editor.document.languageId as Language)) {
       status.hide();
       return;
     }
@@ -429,7 +148,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   const reloadRules = () => {
     RULES = loadRules(context.extensionUri);
-    rebuildCharRegex();
     vscode.workspace.textDocuments.forEach(refresh);
     updateStatus();
   };

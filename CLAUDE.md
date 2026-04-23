@@ -1,17 +1,21 @@
 # LLM Slop Detector
 
-VS Code extension that flags invisible Unicode, AI-style punctuation, and LLM-telltale phrases in `markdown` and `plaintext` files.
+VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, and LLM-telltale phrases in `markdown` and `plaintext` files.
 
-- Entry point: `src/extension.ts`
-- Rule loader: `src/rules.ts`
+- Extension entry: `src/extension.ts`
+- CLI entry: `src/cli.ts` (shipped as `llm-slop` via the `bin` field; same rule engine as the extension)
+- Pure core (no `vscode` import): `src/core/types.ts`, `src/core/rules.ts`, `src/core/scan.ts`. Shared by extension and CLI so they always produce identical findings.
+- VS Code adapter: `src/rules.ts` reads workspace config and delegates to `src/core/rules.ts`; `severityToVscode()` maps the pure `Severity` string union to `vscode.DiagnosticSeverity`
 - Built-in rule list: `builtin-rules.json` at repo root
-- No bundler: `tsc` outputs to `out/`
+- Pre-commit hook: `.pre-commit-hooks.yaml` at repo root
+- No bundler: `tsc` outputs to `out/`; `compile` also `chmod +x out/cli.js`
 
 ## Build & run
 
 - `npm run compile`: one-shot TypeScript build
 - `npm run watch`: incremental rebuild
 - `npm run package`: produces `llm-slop-detector-<version>.vsix` locally
+- `npm run slop -- <paths>`: run the CLI from source against files/dirs
 
 The fast dev loop is **F5 in VS Code**. Launches an Extension Development Host with the extension loaded (`.vscode/launch.json` starts the watcher via `preLaunchTask`). Edit, save, `Cmd+R` in the dev window.
 
