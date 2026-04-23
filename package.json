@@ -151,6 +151,12 @@
         }
       }
     },
+    "jsonValidation": [
+      {
+        "fileMatch": [".llmsloprc.json", ".llmsloprc.jsonc"],
+        "url": "./schemas/llmsloprc.schema.json"
+      }
+    ],
     "commands": [
       {
         "command": "llmSlopDetector.toggle",
