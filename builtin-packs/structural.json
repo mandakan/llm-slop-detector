@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Structural LLM tells: 'not X but Y' pivots, sycophantic openers, section-closer cliches, and meta-commentary.",
   "phrases": [
-    { "pattern": "\\bnot (just|only|merely|simply) .{1,40}?,? but (also )?\\b", "reason": "negation-pivot -- LLM signature construction" },
+    { "pattern": "\\bnot (just|only|merely|simply) [^.!?\\n]{1,40}?,? but (also )?\\b", "reason": "negation-pivot -- LLM signature construction" },
     { "pattern": "\\bit(?:'?s| is| was)(?:n'?t| not) (?:just |only |merely )?\\w+[,;]\\s+it(?:'?s| is| was)\\b", "reason": "LLM contrast pivot" },
     { "pattern": "\\blet me (walk you through|break this down|explain|clarify|elaborate)\\b", "reason": "LLM meta-commentary" },
     { "pattern": "\\bhere'?s (the thing|what|why|how)\\b", "reason": "LLM meta-commentary" },
