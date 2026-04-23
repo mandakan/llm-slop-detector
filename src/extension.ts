@@ -4,6 +4,7 @@ import { Language, scanText } from './core/scan';
 import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
 
 const SOURCE = 'LLM Slop';
+const DOCS_URI = vscode.Uri.parse('https://github.com/mandakan/llm-slop-detector#what-it-flags');
 const BASE_LANGS: Language[] = ['markdown', 'plaintext'];
 let SUPPORTED_LANGS = new Set<Language>(BASE_LANGS);
 const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
@@ -37,6 +38,7 @@ function scanDocument(doc: vscode.TextDocument): vscode.Diagnostic[] {
     const d = new vscode.Diagnostic(new vscode.Range(start, end), f.message, severityToVscode(f.severity));
     d.source = SOURCE;
     d.code = f.code;
+    d.codeDescription = { href: DOCS_URI };
     return d;
   });
 }
