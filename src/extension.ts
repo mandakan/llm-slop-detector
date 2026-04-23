@@ -180,15 +180,20 @@ class SlopCodeActionProvider implements vscode.CodeActionProvider {
       actions.push(action);
     }
 
-    // Fix-all-in-file action. Always offered when any fixable diagnostic exists
-    // anywhere in the document, regardless of cursor position.
+    // Fix-all-in-file action. Only offered when the cursor's current diagnostic
+    // context contains at least one fixable char — otherwise the lightbulb
+    // would suggest it on phrase diagnostics where no char fix applies.
+    const contextHasFixableChar = context.diagnostics.some(d =>
+      d.source === SOURCE && d.code === 'char' &&
+      getReplacement(document.getText(d.range)) !== undefined
+    );
     const allDiags = vscode.languages.getDiagnostics(document.uri)
       .filter(d => d.source === SOURCE && d.code === 'char');
     const fixable = allDiags.filter(d => {
       const c = document.getText(d.range);
       return getReplacement(c) !== undefined;
     });
-    if (fixable.length > 0) {
+    if (contextHasFixableChar && fixable.length > 0) {
       const fixAll = new vscode.CodeAction(
         `Fix all LLM slop characters in file (${fixable.length})`,
         vscode.CodeActionKind.QuickFix
