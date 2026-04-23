@@ -204,6 +204,7 @@ export function activate(context: vscode.ExtensionContext) {
       );
     }),
     vscode.commands.registerCommand('llmSlopDetector.showOnboarding', () => showOnboarding(context)),
+    vscode.commands.registerCommand('llmSlopDetector.scanSelection', () => scanSelection()),
     vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
       if (RULES.sources.length === 0) {
         vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
@@ -219,6 +220,69 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   void maybeShowOnboarding(context);
+}
+
+// ---------------------------------------------------------------------------
+// Scan selection
+// ---------------------------------------------------------------------------
+
+function severityCodicon(s: vscode.DiagnosticSeverity): string {
+  switch (s) {
+    case vscode.DiagnosticSeverity.Error: return 'error';
+    case vscode.DiagnosticSeverity.Warning: return 'warning';
+    case vscode.DiagnosticSeverity.Information: return 'info';
+    case vscode.DiagnosticSeverity.Hint: return 'lightbulb';
+  }
+}
+
+async function scanSelection(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showInformationMessage('LLM Slop Detector: no active editor.');
+    return;
+  }
+  const doc = editor.document;
+  if (!SUPPORTED_LANGS.has(doc.languageId as Language)) {
+    vscode.window.showInformationMessage(
+      `LLM Slop Detector: ${doc.languageId} is not a scanned language.`
+    );
+    return;
+  }
+
+  const sel = editor.selection;
+  const scope = sel.isEmpty ? doc.lineAt(sel.start).range : new vscode.Range(sel.start, sel.end);
+
+  const diags = vscode.languages.getDiagnostics(doc.uri)
+    .filter(d => d.source === SOURCE && scope.intersection(d.range))
+    .sort((a, b) => a.range.start.compareTo(b.range.start));
+
+  if (diags.length === 0) {
+    vscode.window.showInformationMessage(
+      sel.isEmpty
+        ? 'LLM Slop Detector: no findings on this line.'
+        : 'LLM Slop Detector: no findings in selection.'
+    );
+    return;
+  }
+
+  type Item = vscode.QuickPickItem & { diagnostic: vscode.Diagnostic };
+  const items: Item[] = diags.map(d => ({
+    label: `$(${severityCodicon(d.severity)}) ${doc.getText(d.range).trim() || String(d.code)}`,
+    description: `Line ${d.range.start.line + 1}, col ${d.range.start.character + 1}`,
+    detail: d.message,
+    diagnostic: d,
+  }));
+
+  const pick = await vscode.window.showQuickPick(items, {
+    title: `LLM Slop in ${sel.isEmpty ? 'line' : 'selection'} (${diags.length} finding${diags.length === 1 ? '' : 's'})`,
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+
+  if (pick) {
+    editor.revealRange(pick.diagnostic.range, vscode.TextEditorRevealType.InCenter);
+    editor.selection = new vscode.Selection(pick.diagnostic.range.start, pick.diagnostic.range.end);
+  }
 }
 
 // ---------------------------------------------------------------------------

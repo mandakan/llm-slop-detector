@@ -145,6 +145,10 @@
       {
         "command": "llmSlopDetector.showOnboarding",
         "title": "LLM Slop Detector: Show onboarding"
+      },
+      {
+        "command": "llmSlopDetector.scanSelection",
+        "title": "LLM Slop Detector: Scan selection"
       }
     ]
   },
