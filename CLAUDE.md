@@ -84,7 +84,7 @@ Fields: `severity` is one of `error | warning | information | hint`. `replacemen
 
 Managed by `.github/workflows/release-please.yml`. Do not bump `version` in `package.json` manually, do not tag manually.
 
-1. Commit with a Conventional Commits message and push to `main`.
+1. Commit with Conventional Commits messages on a feature branch, open a PR, let CI pass, and **merge via merge commit** (the repo has squash and rebase disabled -- every commit you push ends up on `main` individually, so every commit message needs to be conventional or it's ignored by release-please).
 2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump and CHANGELOG diff.
 3. When ready to ship, merge the Release PR.
 4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`.

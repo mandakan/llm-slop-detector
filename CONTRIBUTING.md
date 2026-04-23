@@ -14,17 +14,20 @@ F5 in VS Code launches an Extension Development Host with the extension loaded. 
 ## Branching and PRs
 
 - `main` is protected. No direct pushes.
-- Work on a feature branch, open a PR, let CI pass, merge via **squash and merge**.
-- PR titles must follow Conventional Commits (see below). The title becomes the squashed commit message and drives the changelog.
+- Work on a feature branch, open a PR, let CI pass, merge via **merge commit**.
+- Every commit on your feature branch ends up on `main` individually, so **every commit message must be a Conventional Commit** -- not just the PR title.
+- The PR title must also be a Conventional Commit (enforced by the `pr-title` CI check).
+- Keep the branch tidy: rebase, squash, or `git commit --fixup` interactively before opening (or before merging) so the final commit series reads well in the CHANGELOG. Don't leave `wip` / `fix typo` commits in the merged set.
 
 ## Commit / PR title convention
 
-Conventional Commits. `release-please` reads these to cut versions and update `CHANGELOG.md`.
+Conventional Commits. `release-please` scans every commit landing on `main` to cut versions and update `CHANGELOG.md`.
 
 - `feat: ...` minor bump (pre-1.0, stays on 0.x)
 - `fix: ...` patch bump
 - `feat!: ...` or `BREAKING CHANGE:` in body: minor bump on 0.x, major once 1.0.0
-- `docs: ...`, `chore: ...`, `ci: ...`, `refactor: ...`, `test: ...` no version bump
+- `docs: ...`, `chore: ...`, `ci: ...`, `refactor: ...`, `test: ...` no version bump, but still appear in CHANGELOG under "Other" if the type is recognised
+- Non-conventional commits are silently ignored by release-please and won't appear in the CHANGELOG. Don't use them for user-facing changes.
 
 Examples for this repo:
 - `feat: add "paradigm shift" to built-in phrase list`
