@@ -13,6 +13,12 @@ jobs:
         id: release
         with:
           release-type: node
+          # Pre-1.0 behavior: feat bumps minor (0.1.0 -> 0.2.0) instead
+          # of jumping to 1.0.0 on the first feature. Breaking changes
+          # still bump minor on 0.x; graduate to 1.0.0 manually when
+          # the API is intentionally stabilized.
+          bump-minor-pre-major: true
+          bump-patch-for-minor-pre-major: false
 
       - uses: actions/checkout@v4
         if: ${{ steps.release.outputs.release_created }}
