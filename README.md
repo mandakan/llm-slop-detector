@@ -188,8 +188,17 @@ Rules merge from these layers (later overrides earlier on the same char or patte
 
 1. Built-in core list shipped with the extension
 2. Optional built-in packs listed in `llmSlopDetector.enabledPacks`
-3. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded)
+3. Local `.llmsloprc.json` in a workspace folder's root (auto-loaded, live-reloaded). Skipped in untrusted workspaces -- see [Workspace trust](#workspace-trust).
 4. User settings
+
+### Workspace trust
+
+Local `.llmsloprc.json` files contain arbitrary regex patterns compiled and executed by the extension. A catastrophic-backtracking pattern in a repo you opened for the first time could hang the extension host. So:
+
+- In a **trusted** workspace, all four rule layers load as usual.
+- In an **untrusted** workspace (VS Code's Restricted Mode), local rule files are skipped. Built-in rules, packs, and user-level settings still apply, so the extension remains useful out of the box.
+
+Trust is granted per-workspace via VS Code's "Manage Workspace Trust" command. The extension listens for trust grants and re-scans open documents when you flip a workspace to trusted.
 
 ### `.llmsloprc.json` format
 

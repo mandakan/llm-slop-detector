@@ -181,6 +181,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument(e => { refresh(e.document); updateStatus(); }),
     vscode.workspace.onDidCloseTextDocument(doc => { collection.delete(doc.uri); updateStatus(); }),
     vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
+    vscode.workspace.onDidGrantWorkspaceTrust(reloadRules),
     vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
     vscode.languages.onDidChangeDiagnostics(() => updateStatus()),
     vscode.workspace.onDidChangeConfiguration(e => {

@@ -45,6 +45,12 @@
   "bin": {
     "llm-slop": "./out/cli.js"
   },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In an untrusted workspace, local .llmsloprc.json files are skipped to avoid running arbitrary regex patterns from an unknown source. Built-in rules, packs, and user-level settings still apply."
+    }
+  },
   "contributes": {
     "configuration": {
       "title": "LLM Slop Detector",
