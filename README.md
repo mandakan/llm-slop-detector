@@ -182,6 +182,7 @@ Settings (Cmd/Ctrl+, then search "LLM Slop"):
 - **LLM Slop Detector: Open settings**: jump to this extension's settings filtered by `@ext:` query
 - **LLM Slop Detector: Show loaded rule sources**: quick pick listing every active source with name, version, and rule counts
 - **LLM Slop Detector: Show onboarding**: re-show the onboarding prompt (useful if you dismissed it too early)
+- **LLM Slop Detector: Scan selection**: list slop findings in the current selection (or the current line if nothing is selected) in a quick pick -- clicking a finding jumps to it. Useful for checking a pasted paragraph without scrolling through every diagnostic in the file.
 
 ## Rule sources
 
