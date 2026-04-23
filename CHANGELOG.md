@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.3.0...llm-slop-detector-v0.3.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* stop structural negation-pivot from crossing sentence boundaries ([c6aa3cb](https://github.com/mandakan/llm-slop-detector/commit/c6aa3cb3de8b390bb9ab157d9e95722440d72073))
+* stop structural negation-pivot from matching across sentences ([203cac1](https://github.com/mandakan/llm-slop-detector/commit/203cac1c7706d8b99ec77407f41558dfbf3318e2))
+
 ## [0.3.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.2.0...llm-slop-detector-v0.3.0) (2026-04-23)
 
 
