@@ -106,6 +106,13 @@
           },
           "description": "Override quick-fix replacements for specific characters. Key: the flagged character (e.g. \"—\" for em dash). Value: the replacement string. User overrides win over built-in and local-file rules."
         },
+        "llmSlopDetector.debounceMs": {
+          "type": "number",
+          "default": 150,
+          "minimum": 0,
+          "maximum": 2000,
+          "description": "Milliseconds to wait after the last edit before rescanning the document. Collapses rapid keystrokes into a single scan. Set to 0 for instant feedback on small files."
+        },
         "llmSlopDetector.scanCodeComments": {
           "type": "boolean",
           "default": false,

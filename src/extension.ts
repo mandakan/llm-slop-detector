@@ -29,6 +29,21 @@ let RULES: RuleSet = { chars: new Map(), phrases: [], sources: [], charRegex: /(
 // can recover rule metadata (pattern, matched char) without rescanning.
 const FINDINGS_BY_URI = new Map<string, Finding[]>();
 
+// Pending debounced refreshes keyed by document URI. Leading-edge scan fires
+// immediately on the first change after idle; `trailing` flips to true when
+// further changes arrive during the debounce window, triggering one more scan
+// when the timer expires.
+type PendingRefresh = { timer: NodeJS.Timeout; trailing: boolean };
+const PENDING_REFRESH = new Map<string, PendingRefresh>();
+
+function cancelPendingRefresh(uriKey: string): void {
+  const p = PENDING_REFRESH.get(uriKey);
+  if (p !== undefined) {
+    clearTimeout(p.timer);
+    PENDING_REFRESH.delete(uriKey);
+  }
+}
+
 function getReplacement(char: string): string | undefined {
   return RULES.chars.get(char)?.replacement;
 }
@@ -181,6 +196,36 @@ export function activate(context: vscode.ExtensionContext) {
     collection.set(doc.uri, scanDocument(doc));
   };
 
+  // Leading+trailing debounce: first change after idle triggers an immediate
+  // scan so feedback stays snappy; subsequent changes within the window
+  // collapse into one trailing scan when the timer fires.
+  const scheduleRefresh = (doc: vscode.TextDocument) => {
+    const key = doc.uri.toString();
+    const raw = vscode.workspace.getConfiguration('llmSlopDetector').get<number>('debounceMs', 150);
+    const ms = Number.isFinite(raw) ? Math.max(0, Math.min(2000, raw)) : 150;
+
+    if (ms === 0) {
+      cancelPendingRefresh(key);
+      refresh(doc);
+      return;
+    }
+
+    const existing = PENDING_REFRESH.get(key);
+    if (existing !== undefined) {
+      existing.trailing = true;
+      return;
+    }
+
+    refresh(doc);
+    const entry: PendingRefresh = { timer: undefined as unknown as NodeJS.Timeout, trailing: false };
+    entry.timer = setTimeout(() => {
+      const current = PENDING_REFRESH.get(key);
+      PENDING_REFRESH.delete(key);
+      if (current?.trailing) refresh(doc);
+    }, ms);
+    PENDING_REFRESH.set(key, entry);
+  };
+
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   status.command = 'llmSlopDetector.toggle';
   context.subscriptions.push(status);
@@ -240,10 +285,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(doc => { refresh(doc); updateStatus(); }),
-    vscode.workspace.onDidChangeTextDocument(e => { refresh(e.document); updateStatus(); }),
+    vscode.workspace.onDidChangeTextDocument(e => { scheduleRefresh(e.document); }),
     vscode.workspace.onDidCloseTextDocument(doc => {
+      const key = doc.uri.toString();
+      cancelPendingRefresh(key);
       collection.delete(doc.uri);
-      FINDINGS_BY_URI.delete(doc.uri.toString());
+      FINDINGS_BY_URI.delete(key);
       updateStatus();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
@@ -393,4 +440,7 @@ async function showOnboarding(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() { /* diagnostics are disposed via subscriptions */ }
+export function deactivate() {
+  for (const { timer } of PENDING_REFRESH.values()) clearTimeout(timer);
+  PENDING_REFRESH.clear();
+}
