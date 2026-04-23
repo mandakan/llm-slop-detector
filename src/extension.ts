@@ -247,6 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
       updateStatus();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
+    vscode.workspace.onDidGrantWorkspaceTrust(reloadRules),
     vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
     vscode.languages.onDidChangeDiagnostics(() => updateStatus()),
     vscode.workspace.onDidChangeConfiguration(e => {

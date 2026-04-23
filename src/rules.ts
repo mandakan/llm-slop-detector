@@ -17,6 +17,10 @@ export function severityToVscode(s: Severity): vscode.DiagnosticSeverity {
 }
 
 function getLocalRulePaths(): string[] {
+  // Workspace rule files ship arbitrary regex. In an untrusted workspace we
+  // fall back to built-in rules only; a catastrophic-backtracking pattern in
+  // a random repo shouldn't be able to wedge the extension host.
+  if (!vscode.workspace.isTrusted) return [];
   const paths: string[] = [];
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     const p = path.join(folder.uri.fsPath, LOCAL_RULES_FILENAME);
