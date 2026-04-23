@@ -44,15 +44,6 @@
   "bin": {
     "llm-slop": "./out/cli.js"
   },
-  "files": [
-    "out/",
-    "builtin-rules.json",
-    "builtin-packs/",
-    "README.md",
-    "THIRD_PARTY_NOTICES.md",
-    "LICENSE",
-    ".pre-commit-hooks.yaml"
-  ],
   "contributes": {
     "configuration": {
       "title": "LLM Slop Detector",
