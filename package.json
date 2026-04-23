@@ -41,6 +41,18 @@
     "onLanguage:plaintext"
   ],
   "main": "./out/extension.js",
+  "bin": {
+    "llm-slop": "./out/cli.js"
+  },
+  "files": [
+    "out/",
+    "builtin-rules.json",
+    "builtin-packs/",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE",
+    ".pre-commit-hooks.yaml"
+  ],
   "contributes": {
     "configuration": {
       "title": "LLM Slop Detector",
@@ -118,9 +130,10 @@
     ]
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && chmod +x out/cli.js",
     "watch": "tsc -watch -p ./",
-    "package": "npx --yes @vscode/vsce package"
+    "package": "npx --yes @vscode/vsce package",
+    "slop": "node ./out/cli.js"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

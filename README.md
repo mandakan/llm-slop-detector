@@ -3,7 +3,7 @@
 [![Install on VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
 [![License: MIT](https://img.shields.io/github/license/mandakan/llm-slop-detector)](LICENSE)
 
-A VS Code extension that flags invisible Unicode, AI-style punctuation, and telltale LLM phrases in `markdown` and `plaintext` files.
+A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, and telltale LLM phrases in `markdown` and `plaintext` files. The CLI shares its rule engine with the editor, so local and CI findings stay in sync.
 
 ![LLM Slop Detector in action](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/screenshot.png)
 
@@ -188,6 +188,72 @@ Patterns are JavaScript regex, case-insensitive. Use `\\b` for word boundaries.
 ```json
 "llmSlopDetector.phrases": ["\\byour own pet phrase\\b"],
 "llmSlopDetector.charReplacements": { "--": " - " }
+```
+
+## CLI
+
+The same rule engine ships as a CLI, useful for pre-commit hooks and CI. It produces identical findings to the extension for the same input and config.
+
+```bash
+llm-slop [options] <paths...>
+```
+
+Paths may be files or directories. Directories are walked recursively; files with extensions `.md`, `.markdown`, `.mdown`, `.txt`, or `.text` are scanned. `node_modules`, `out`, and dot-prefixed entries are skipped.
+
+Options:
+
+- `-f, --format <pretty|json|sarif>` -- output format (default `pretty`)
+- `--pack <name,...>` -- enable rule packs (comma-separated)
+- `--no-builtin` -- skip the built-in core rule list
+- `--config <path>` -- explicit `.llmsloprc.json` path (default: nearest ancestor of cwd)
+- `-s, --severity <level>` -- fail threshold: `error | warning | information | hint` (default `information`)
+- `-q, --quiet` -- suppress the summary line
+- `-h, --help` / `-v, --version`
+
+Exit code: `0` if no findings at or above the severity threshold, `1` if any, `2` on argument errors.
+
+### Running locally
+
+From a clone:
+
+```bash
+npm install
+npm run compile
+./out/cli.js README.md
+# or
+npm run slop -- README.md
+```
+
+From an installed copy of the extension (the VSIX bundles the CLI): link it globally.
+
+```bash
+cd ~/.vscode/extensions/thias-se.llm-slop-detector-*
+npm link   # optional -- exposes `llm-slop` on PATH
+```
+
+### Pre-commit hook
+
+`.pre-commit-hooks.yaml` ships at the repo root so you can wire it up via [pre-commit.com](https://pre-commit.com/):
+
+```yaml
+repos:
+  - repo: https://github.com/mandakan/llm-slop-detector
+    rev: v0.4.0
+    hooks:
+      - id: llm-slop
+```
+
+Pin to a released tag. The hook runs on staged `markdown` and `plaintext` files and fails the commit on any finding (override with `args: [--severity, error]` to only fail on errors).
+
+### GitHub Actions
+
+The SARIF output plugs into code-scanning:
+
+```yaml
+- run: npx llm-slop-detector --format=sarif . > slop.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: slop.sarif
 ```
 
 ## Install

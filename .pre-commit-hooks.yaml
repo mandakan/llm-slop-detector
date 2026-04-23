@@ -1,0 +1,6 @@
+- id: llm-slop
+  name: LLM Slop Detector
+  description: Flag LLM-style phrases and invisible Unicode in markdown and plaintext files.
+  entry: llm-slop
+  language: node
+  types_or: [markdown, plain-text]
