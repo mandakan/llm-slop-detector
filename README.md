@@ -8,14 +8,23 @@ A VS Code extension that flags invisible Unicode, AI-style punctuation, and tell
 
 **Info (blue, non-intrusive):** em/en dashes, curly quotes, horizontal ellipsis, angle quotes, and a configurable list of phrase regexes like `delve`, `it's worth noting`, `tapestry of`, `leverage`, etc.
 
-## Install (local)
+## Install (from a GitHub Release)
+
+Grab the latest `.vsix` from [Releases](https://github.com/mandakan/llm-slop-detector/releases), then:
 
 ```bash
+code --install-extension llm-slop-detector-<version>.vsix
+```
+
+## Install (from source)
+
+```bash
+git clone https://github.com/mandakan/llm-slop-detector.git
 cd llm-slop-detector
 npm install
 npm run compile
-npx --yes @vscode/vsce package --allow-missing-repository
-code --install-extension llm-slop-detector-0.1.0.vsix
+npm run package
+code --install-extension llm-slop-detector-*.vsix
 ```
 
 Reload VS Code. Open any `.md` or `.txt` file — diagnostics appear in the Problems panel and as squiggles inline.
