@@ -178,7 +178,7 @@ export function loadRules(extensionUri: vscode.Uri): RuleSet {
     if (raw) ingestList(raw, p, rules);
   }
 
-  // 3. User settings — simple additive layer for quick tweaks.
+  // 3. User settings: simple additive layer for quick tweaks.
   const userPhrases = cfg.get<string[]>('phrases', []);
   if (userPhrases.length > 0) {
     ingestList(
