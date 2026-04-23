@@ -2,6 +2,7 @@
 .vscode-test/**
 .github/**
 .claude/**
+docs/**
 src/**
 .gitignore
 .vscodeignore
