@@ -1,6 +1,23 @@
 # LLM Slop Detector
 
+[![Marketplace version](https://img.shields.io/visual-studio-marketplace/v/thias-se.llm-slop-detector?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Marketplace installs](https://img.shields.io/visual-studio-marketplace/i/thias-se.llm-slop-detector)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Marketplace rating](https://img.shields.io/visual-studio-marketplace/r/thias-se.llm-slop-detector)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![License: MIT](https://img.shields.io/github/license/mandakan/llm-slop-detector)](LICENSE)
+
 A VS Code extension that flags invisible Unicode, AI-style punctuation, and telltale LLM phrases in `markdown` and `plaintext` files.
+
+![LLM Slop Detector in action](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/screenshot.png)
+
+## Features
+
+- Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
+- Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
+- Configurable phrase rules: ~40 built-in core rules plus five opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`) totalling 285+ curated regex patterns
+- Per-workspace overrides via `.llmsloprc.json` and per-user overrides via settings
+- One-click quick fixes for deterministic character replacements, plus a "fix all" action
+- Status-bar slop counter for the active file, click to toggle
+- No bundler, no runtime dependencies, no telemetry
 
 ## What it flags
 
