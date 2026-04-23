@@ -5,6 +5,7 @@ import { parseArgs } from 'util';
 import { BUILTIN_PACKS, findLocalRulePathFromCwd, loadRules } from './core/rules';
 import { Finding, RuleSet, SEVERITY_RANK, Severity } from './core/types';
 import { Language, offsetToLineCol, scanText } from './core/scan';
+import { IgnoreMatcher, loadIgnoreMatcher } from './core/ignore';
 
 type Format = 'pretty' | 'json' | 'sarif';
 
@@ -17,6 +18,8 @@ type CliOptions = {
   severity: Severity;
   quiet: boolean;
   scanComments: boolean;
+  exclude: string[];
+  noIgnoreFile: boolean;
 };
 
 type FileReport = {
@@ -81,6 +84,9 @@ Options:
                                     information | hint (default: information)
       --scan-comments               Scan comments/docstrings in source code
                                     files (.ts, .py, .rs, .go, etc)
+      --exclude <pattern>            .gitignore-style pattern to skip. Repeat
+                                    for multiple. Merged with .slopignore.
+      --no-slopignore               Ignore the .slopignore file at cwd
   -q, --quiet                       Suppress the summary line
   -h, --help                        Show this help
   -v, --version                     Print version
@@ -105,6 +111,8 @@ function parseCli(argv: string[]): CliOptions {
       config: { type: 'string' },
       severity: { type: 'string', short: 's', default: 'information' },
       'scan-comments': { type: 'boolean', default: false },
+      exclude: { type: 'string', multiple: true, default: [] },
+      'no-slopignore': { type: 'boolean', default: false },
       quiet: { type: 'boolean', short: 'q', default: false },
       help: { type: 'boolean', short: 'h', default: false },
       version: { type: 'boolean', short: 'v', default: false },
@@ -143,6 +151,11 @@ function parseCli(argv: string[]): CliOptions {
     die('no paths given. Try --help.');
   }
 
+  const excludeRaw = parsed.values.exclude;
+  const exclude = Array.isArray(excludeRaw)
+    ? excludeRaw.filter((v): v is string => typeof v === 'string')
+    : typeof excludeRaw === 'string' ? [excludeRaw] : [];
+
   return {
     paths: parsed.positionals,
     format: format as Format,
@@ -152,6 +165,8 @@ function parseCli(argv: string[]): CliOptions {
     severity: severityRaw as Severity,
     quiet: parsed.values.quiet as boolean,
     scanComments: parsed.values['scan-comments'] as boolean,
+    exclude,
+    noIgnoreFile: parsed.values['no-slopignore'] as boolean,
   };
 }
 
@@ -175,7 +190,12 @@ function extensionRoot(): string {
   return path.resolve(__dirname, '..');
 }
 
-function collectFiles(paths: string[], extensions: Map<string, Language>): string[] {
+function collectFiles(
+  paths: string[],
+  extensions: Map<string, Language>,
+  ignore: IgnoreMatcher,
+  ignoreRoot: string,
+): string[] {
   const result: string[] = [];
   for (const p of paths) {
     const abs = path.resolve(p);
@@ -190,18 +210,32 @@ function collectFiles(paths: string[], extensions: Map<string, Language>): strin
       const ext = path.extname(abs).toLowerCase();
       const base = path.basename(abs);
       if (extensions.has(ext) || GIT_MESSAGE_BASENAMES.has(base)) {
+        if (isIgnored(abs, ignoreRoot, ignore, false)) continue;
         result.push(abs);
       } else {
         process.stderr.write(`llm-slop: skipping ${p} (unrecognized extension; add --scan-comments for source code)\n`);
       }
     } else if (stat.isDirectory()) {
-      walkDir(abs, extensions, result);
+      walkDir(abs, extensions, result, ignore, ignoreRoot);
     }
   }
   return result;
 }
 
-function walkDir(dir: string, extensions: Map<string, Language>, out: string[]): void {
+function isIgnored(absPath: string, ignoreRoot: string, ignore: IgnoreMatcher, isDirectory: boolean): boolean {
+  if (ignore.patterns.length === 0) return false;
+  const rel = path.relative(ignoreRoot, absPath);
+  if (rel.length === 0 || rel.startsWith('..')) return false;
+  return ignore.ignores(rel, isDirectory);
+}
+
+function walkDir(
+  dir: string,
+  extensions: Map<string, Language>,
+  out: string[],
+  ignore: IgnoreMatcher,
+  ignoreRoot: string,
+): void {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -212,8 +246,10 @@ function walkDir(dir: string, extensions: Map<string, Language>, out: string[]):
     if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'out') continue;
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      walkDir(full, extensions, out);
+      if (isIgnored(full, ignoreRoot, ignore, true)) continue;
+      walkDir(full, extensions, out, ignore, ignoreRoot);
     } else if (e.isFile() && extensions.has(path.extname(e.name).toLowerCase())) {
+      if (isIgnored(full, ignoreRoot, ignore, false)) continue;
       out.push(full);
     }
   }
@@ -376,7 +412,10 @@ function main(): void {
     for (const [k, v] of CODE_EXTENSIONS) extensions.set(k, v);
   }
 
-  const files = collectFiles(opts.paths, extensions);
+  const ignoreRoot = process.cwd();
+  const ignore = loadIgnoreMatcher(opts.noIgnoreFile ? null : ignoreRoot, opts.exclude);
+
+  const files = collectFiles(opts.paths, extensions, ignore, ignoreRoot);
   const reports: FileReport[] = files.map(f => ({ path: f, findings: scanFile(f, rules, extensions) }));
 
   let output: string;
