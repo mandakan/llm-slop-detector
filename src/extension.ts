@@ -1,13 +1,23 @@
 import * as vscode from 'vscode';
 import { LOCAL_RULES_FILENAME, RuleSet, loadRules, severityToVscode } from './rules';
 import { Language, scanText } from './core/scan';
+import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
 
 const SOURCE = 'LLM Slop';
-const SUPPORTED_LANGS = new Set<Language>(['markdown', 'plaintext']);
-const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [
-  { language: 'markdown' },
-  { language: 'plaintext' },
-];
+const BASE_LANGS: Language[] = ['markdown', 'plaintext'];
+let SUPPORTED_LANGS = new Set<Language>(BASE_LANGS);
+const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
+
+function rebuildSupportedLangs() {
+  const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+  const scanComments = cfg.get<boolean>('scanCodeComments', false);
+  const codeLangs = cfg.get<string[]>('codeCommentLanguages', []);
+  const allowed = new Set(SUPPORTED_CODE_LANGUAGES);
+  SUPPORTED_LANGS = new Set<Language>([
+    ...BASE_LANGS,
+    ...(scanComments ? codeLangs.filter(l => allowed.has(l)) : []),
+  ]);
+}
 
 // Module-level mutable rule state. Rebuilt on config change / rule-file change
 // and scans read through it.
@@ -148,6 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const reloadRules = () => {
     RULES = loadRules(context.extensionUri);
+    rebuildSupportedLangs();
     vscode.workspace.textDocuments.forEach(refresh);
     updateStatus();
   };
