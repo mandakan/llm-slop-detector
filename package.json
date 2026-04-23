@@ -1,0 +1,90 @@
+{
+  "name": "llm-slop-detector",
+  "displayName": "LLM Slop Detector",
+  "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
+  "version": "0.1.0",
+  "publisher": "mathias-local",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Linters", "Other"],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onLanguage:plaintext"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "LLM Slop Detector",
+      "properties": {
+        "llmSlopDetector.phrases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "\\bdelve(s|d|ing)?\\b",
+            "\\bit'?s worth noting\\b",
+            "\\bit'?s important to note\\b",
+            "\\bin the ever[- ]evolving landscape\\b",
+            "\\bin today'?s fast[- ]paced world\\b",
+            "\\bnavigate the complexit(y|ies)\\b",
+            "\\ba testament to\\b",
+            "\\btapestry of\\b",
+            "\\brich tapestry\\b",
+            "\\bat the heart of\\b",
+            "\\bcrucial role\\b",
+            "\\bplay(s|ed|ing)? a (crucial|pivotal|key|vital) role\\b",
+            "\\bharness(es|ed|ing)? the power of\\b",
+            "\\bunlock(s|ed|ing)? the (potential|power|secrets)\\b",
+            "\\bleverag(e|es|ed|ing)\\b",
+            "\\bembark(s|ed|ing)? on (a|this) journey\\b",
+            "\\brealm of\\b",
+            "\\bmultifaceted\\b",
+            "\\bmeticulous(ly)?\\b",
+            "\\bunderscore(s|d)?\\b",
+            "\\bparamount\\b",
+            "\\bdive (in|into|deeper)\\b",
+            "\\bin conclusion,\\b",
+            "\\bwhen it comes to\\b",
+            "\\bthat said,\\b",
+            "\\bhowever, it'?s\\b",
+            "\\boverall,\\b",
+            "\\bultimately,\\b",
+            "\\bfoster(s|ed|ing)?\\b",
+            "\\bbustling\\b",
+            "\\bgame[- ]chang(er|ing)\\b",
+            "\\bcutting[- ]edge\\b",
+            "\\bstate[- ]of[- ]the[- ]art\\b",
+            "\\brevolutioniz(e|es|ed|ing)\\b",
+            "\\bseamless(ly)?\\b",
+            "\\brobust\\b",
+            "\\bholistic\\b",
+            "\\bsynerg(y|ies|istic)\\b",
+            "\\bparadigm shift\\b"
+          ],
+          "description": "Regex patterns flagged as telltale LLM phrases. Case-insensitive. Use \\b for word boundaries."
+        },
+        "llmSlopDetector.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the detector."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "llmSlopDetector.toggle",
+        "title": "LLM Slop Detector: Toggle"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.7.0"
+  }
+}
