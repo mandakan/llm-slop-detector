@@ -75,7 +75,7 @@ function parseSeverity(s: unknown, fallback: vscode.DiagnosticSeverity): vscode.
 // Chars in the invisible/zero-width ranges are dangerous (hide in text,
 // break diffs, enable Trojan Source attacks); visible punctuation is merely suspicious.
 function defaultCharSeverity(char: string): vscode.DiagnosticSeverity {
-  const code = char.charCodeAt(0);
+  const code = char.codePointAt(0)!;
   const invisible =
     code === 0x00AD ||
     code === 0x00A0 ||
@@ -105,7 +105,7 @@ function ingestList(raw: RawList, origin: string, target: RuleSet): void {
         char: charStr,
         name: typeof c.name === 'string'
           ? c.name
-          : `Unknown char (U+${charStr.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`,
+          : `Unknown char (U+${charStr.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`,
         severity: parseSeverity(c.severity, defaultCharSeverity(charStr)),
         replacement: typeof c.replacement === 'string' ? c.replacement : undefined,
         suggestion: typeof c.suggestion === 'string' ? c.suggestion : undefined,
@@ -220,7 +220,7 @@ export function loadRules(extensionUri: vscode.Uri): RuleSet {
     } else {
       rules.chars.set(char, {
         char,
-        name: `User-defined (U+${char.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')})`,
+        name: `User-defined (U+${char.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')})`,
         severity: defaultCharSeverity(char),
         replacement,
         source: 'settings.json',

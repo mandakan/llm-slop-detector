@@ -18,10 +18,13 @@ function rebuildCharRegex() {
     CHAR_REGEX = /(?!)/g;
     return;
   }
+  // \u{...} requires the u flag but accepts astral code points (tag chars,
+  // high-plane variation selectors). Map keys for astral chars are
+  // UTF-16 surrogate pairs, so Map.get(m[0]) still resolves correctly.
   const body = Array.from(RULES.chars.keys())
-    .map(c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'))
+    .map(c => '\\u{' + c.codePointAt(0)!.toString(16) + '}')
     .join('');
-  CHAR_REGEX = new RegExp('[' + body + ']', 'g');
+  CHAR_REGEX = new RegExp('[' + body + ']', 'gu');
 }
 
 function getReplacement(char: string): string | undefined {
