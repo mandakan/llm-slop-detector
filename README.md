@@ -13,7 +13,7 @@ No install needed -- paste text into the [web playground](https://mandakan.githu
 
 ## Browser extension (Chrome, Arc, Firefox)
 
-A WebExtension that scans `<textarea>` and text inputs as you type on any webpage, highlights findings inline with colour-coded marks over the text, and shows a small "N slop" badge next to each editor. Click the badge for a per-finding popover with severity, reason, source pack, a per-finding "Fix this" button, and a "Fix all chars" button that applies every deterministic character replacement (em dash, curly quotes, zero-width, etc.) at once. Runs entirely in the browser -- no network calls, no telemetry.
+A WebExtension that scans `<textarea>`, text inputs, and `contenteditable` elements (Gmail compose, vanilla rich-text widgets) as you type on any webpage. Findings are highlighted inline with colour-coded marks -- textarea marks are tinted background, contenteditable marks are wavy underlines so they don't disturb reading of styled content. A small "N slop" badge next to each editor opens a per-finding popover with severity, reason, source pack, per-finding "Fix this" buttons, and a "Fix all chars" button that applies every deterministic character replacement (em dash, curly quotes, zero-width, etc.) at once. For contenteditables the fix goes through `execCommand('insertText')` so the host editor's undo stack still works (`Cmd+Z`). Runs entirely in the browser -- no network calls, no telemetry.
 
 **Install from source (until stores are wired up):**
 
@@ -36,9 +36,10 @@ Turn this off in the options page if you only want to lint your own writing. The
 
 ### Known limitations (v1)
 
-- `contenteditable` editors (Gmail compose, Substack, Notion, LinkedIn) are not yet supported -- only `<textarea>` and `<input type=text>`. Inline marks only render over textareas.
+- Rich editors with virtual-DOM reconcilers (Notion/Lexical, Substack/ProseMirror, LinkedIn/Draft.js, Twitter/X) strip our inline marks on their next render cycle. The badge count and popover still work, but inline underlines won't persist. Plain `contenteditable` (Gmail compose, vanilla rich-text widgets) is supported.
 - Google Docs uses a canvas-based renderer with no real DOM text; the extension can't see its contents and won't work there.
 - Cross-origin iframes are invisible for the same-origin-policy reason.
+- Inline phrase matches that straddle inline formatting (e.g. a word that's partially italicised) appear in the popover list but without an inline mark, because `Range.surroundContents` rejects ranges that cross element boundaries. Workaround: strip the formatting if you want the mark.
 
 ## Features
 
