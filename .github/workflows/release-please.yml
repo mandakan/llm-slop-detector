@@ -45,5 +45,10 @@ jobs:
         run: npx --yes @vscode/vsce publish -p "$VSCE_PAT"
         if: ${{ steps.release.outputs.release_created }}
 
+      - env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx publish *.vsix -p "$OVSX_PAT"
+        if: ${{ steps.release.outputs.release_created }}
+
       - run: npx -y npm@latest publish
         if: ${{ steps.release.outputs.release_created }}
