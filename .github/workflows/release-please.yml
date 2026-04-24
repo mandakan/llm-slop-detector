@@ -45,8 +45,5 @@ jobs:
         run: npx --yes @vscode/vsce publish -p "$VSCE_PAT"
         if: ${{ steps.release.outputs.release_created }}
 
-      - run: npm install -g npm@latest
-        if: ${{ steps.release.outputs.release_created }}
-
-      - run: npm publish
+      - run: npx -y npm@latest publish
         if: ${{ steps.release.outputs.release_created }}
