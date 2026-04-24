@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LLM Slop Detector",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type -- or in any page you're reading. Local only.",
   "permissions": [
     "storage"
@@ -49,7 +49,9 @@
       "id": "llm-slop-detector@thias.se",
       "strict_min_version": "128.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   }
