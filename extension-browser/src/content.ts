@@ -39,12 +39,16 @@ const MIN_EDITOR_CHARS = 40; // skip search boxes
 // code) rather than adding them.
 const LANGUAGE: Language = 'markdown';
 
-type EditorKind = 'textarea' | 'input';
+type EditorKind = 'textarea' | 'input' | 'contenteditable';
+type TextControl = HTMLTextAreaElement | HTMLInputElement;
+type EditorEl = TextControl | HTMLElement;
 type EditorState = {
-  editor: HTMLTextAreaElement | HTMLInputElement;
+  editor: EditorEl;
   kind: EditorKind;
   badge: HTMLElement;
-  mirror: HTMLElement | null;
+  mirror: HTMLElement | null;         // textarea only
+  marks: HTMLElement[];                // contenteditable only: live <lsd-ce-mark> wrappers
+  applyingMarks: boolean;              // contenteditable only: suppress input feedback during rewrap
   debounceHandle: number | null;
   lastFindings: Finding[];
   lastText: string;
@@ -54,11 +58,11 @@ type EditorState = {
 const editors = new WeakMap<Element, EditorState>();
 // Separate iterable registry so reflowAll() can walk every live editor.
 // We prune entries when their editor leaves the DOM inside positionOverlays.
-const editorRegistry = new Set<HTMLTextAreaElement | HTMLInputElement>();
+const editorRegistry = new Set<EditorEl>();
 let rules: RuleSet;
 let prefs: Prefs;
 let popover: HTMLElement | null = null;
-let activeEditorEl: (HTMLTextAreaElement | HTMLInputElement) | null = null;
+let activeEditorEl: EditorEl | null = null;
 
 // ---------------------------------------------------------------------------
 // Bootstrap
@@ -136,8 +140,20 @@ function teardownEditors() {
 // Editor discovery
 // ---------------------------------------------------------------------------
 
+const TEXT_CONTROL_SELECTOR = 'textarea, input[type=text]';
+const CE_SELECTOR = '[contenteditable="true"], [contenteditable=""]';
+const ALL_EDITOR_SELECTOR = `${TEXT_CONTROL_SELECTOR}, ${CE_SELECTOR}`;
+
+function attachAny(el: HTMLElement) {
+  if (el.matches(TEXT_CONTROL_SELECTOR)) {
+    attach(el);
+  } else if (el.matches(CE_SELECTOR)) {
+    attachContenteditable(el);
+  }
+}
+
 function scanDocument() {
-  document.querySelectorAll('textarea, input[type=text]').forEach(el => attach(el as HTMLElement));
+  document.querySelectorAll(ALL_EDITOR_SELECTOR).forEach(el => attachAny(el as HTMLElement));
 }
 
 function observeMutations() {
@@ -145,9 +161,12 @@ function observeMutations() {
     for (const m of mutations) {
       m.addedNodes.forEach(node => {
         if (!(node instanceof HTMLElement)) return;
-        if (node.matches('textarea, input[type=text]')) attach(node);
-        node.querySelectorAll?.('textarea, input[type=text]').forEach(el => attach(el as HTMLElement));
+        if (node.matches(ALL_EDITOR_SELECTOR)) attachAny(node);
+        node.querySelectorAll?.(ALL_EDITOR_SELECTOR).forEach(el => attachAny(el as HTMLElement));
       });
+      // An element may become contenteditable dynamically; the attribute
+      // mutation case is rare and adds observer cost, so we skip it and
+      // rely on initial sweep + childList additions only.
     }
   });
   mo.observe(document.documentElement, { childList: true, subtree: true });
@@ -190,6 +209,8 @@ function attach(el: HTMLElement) {
     kind: isTextarea ? 'textarea' : 'input',
     badge,
     mirror: null,
+    marks: [],
+    applyingMarks: false,
     debounceHandle: null,
     lastFindings: [],
     lastText: '',
@@ -229,6 +250,282 @@ function attach(el: HTMLElement) {
   installGlobalListeners();
   positionOverlays(state);
   runScan(state);
+}
+
+// ---------------------------------------------------------------------------
+// Contenteditable path (#71)
+// ---------------------------------------------------------------------------
+
+const CE_MARK_TAG = 'lsd-ce-mark';
+
+// Tags to skip while extracting plain text / fragments from a contenteditable.
+// Broader than the read-only list because we're inside a user-controlled
+// editor where script/style/etc. still shouldn't leak.
+const CE_EXTRACT_SKIP = new Set([
+  'script', 'style', 'noscript', 'template',
+  'svg', 'math', 'video', 'audio', 'object', 'embed', 'canvas',
+  'textarea', 'input',
+]);
+
+type CeFragment = { node: Text; textOffset: number };
+
+function attachContenteditable(el: HTMLElement) {
+  if (editors.has(el)) return;
+  if (el.closest(`.${HOST_CLASS}`)) return;
+  if (el.hasAttribute('data-slop-ignore')) return;
+  // Don't re-attach to an element already inside an attached contenteditable
+  // (nested ce elements are rare but real: e.g. Gmail quote blocks).
+  for (const ed of editorRegistry) {
+    if (ed !== el && ed.contains(el)) return;
+  }
+  // Minimum visible size guard so we don't attach to empty 0-height divs that
+  // become contenteditable only when clicked.
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 120 || rect.height < 16) return;
+
+  const badge = document.createElement('span');
+  badge.className = `${HOST_CLASS} ${BADGE_CLASS} lsd-hidden`;
+  badge.textContent = '0';
+  badge.title = 'LLM Slop Detector';
+  badge.setAttribute('role', 'button');
+  badge.setAttribute('tabindex', '0');
+  badge.addEventListener('click', e => { e.stopPropagation(); togglePopover(el); });
+  badge.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePopover(el); }
+  });
+  document.body.appendChild(badge);
+
+  const state: EditorState = {
+    editor: el,
+    kind: 'contenteditable',
+    badge,
+    mirror: null,
+    marks: [],
+    applyingMarks: false,
+    debounceHandle: null,
+    lastFindings: [],
+    lastText: '',
+    resizeObserver: null,
+  };
+  editors.set(el, state);
+  editorRegistry.add(el);
+
+  el.addEventListener('input', () => {
+    // input fires on our own wrap mutations too (via execCommand fix and
+    // the native DOM mutations). Skip when we know we caused it.
+    if (state.applyingMarks) return;
+    scheduleScan(state);
+  });
+  el.addEventListener('focus', () => positionOverlays(state));
+  el.addEventListener('blur', () => {
+    setTimeout(() => { if (document.activeElement !== badge) positionOverlays(state); }, 150);
+  });
+
+  if ('ResizeObserver' in window) {
+    state.resizeObserver = new ResizeObserver(() => reflowAll());
+    state.resizeObserver.observe(el);
+  }
+
+  installGlobalListeners();
+  positionOverlays(state);
+  runScanCe(state);
+}
+
+// Extract plain text from a contenteditable, alongside a fragment map from
+// the extracted-text offset space back to the DOM text nodes. Our own
+// <lsd-ce-mark> wrappers are descended into but produce no extra text, so
+// the extracted string is stable across mark presence/absence.
+function extractCeText(el: HTMLElement): { text: string; fragments: CeFragment[] } {
+  let text = '';
+  const fragments: CeFragment[] = [];
+
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = node as Text;
+      fragments.push({ node: t, textOffset: text.length });
+      text += t.nodeValue ?? '';
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const elNode = node as Element;
+    const tag = elNode.tagName.toLowerCase();
+    if (tag === 'br') { text += '\n'; return; }
+    if (CE_EXTRACT_SKIP.has(tag)) return;
+    // Our own marker: descend transparently so extracted text ignores it.
+    const isOurMark = tag === CE_MARK_TAG;
+    const block = !isOurMark && isBlockElement(elNode);
+    if (block && text.length > 0 && !text.endsWith('\n')) text += '\n';
+    for (const child of Array.from(elNode.childNodes)) walk(child);
+    if (block && !text.endsWith('\n')) text += '\n';
+  };
+
+  for (const child of Array.from(el.childNodes)) walk(child);
+  return { text, fragments };
+}
+
+function isBlockElement(el: Element): boolean {
+  const display = getComputedStyle(el).display;
+  // Treat grid/flex containers as block for text-flow purposes too.
+  return display === 'block' || display === 'flex' || display === 'grid' || display === 'list-item' || display === 'table';
+}
+
+function findFragmentAt(fragments: CeFragment[], textOffset: number): { frag: CeFragment; localOffset: number } | null {
+  // Binary search would be nicer; linear is fine for typical fragment counts.
+  for (let i = 0; i < fragments.length; i++) {
+    const f = fragments[i];
+    const len = f.node.nodeValue?.length ?? 0;
+    const end = f.textOffset + len;
+    if (textOffset >= f.textOffset && textOffset <= end) {
+      return { frag: f, localOffset: textOffset - f.textOffset };
+    }
+  }
+  return null;
+}
+
+function wrapCeFinding(fragments: CeFragment[], f: Finding, state: EditorState): HTMLElement | null {
+  const start = findFragmentAt(fragments, f.offset);
+  const end = findFragmentAt(fragments, f.offset + f.length);
+  if (!start || !end) return null;
+
+  // Same-text-node fast path.
+  if (start.frag === end.frag) {
+    return wrapCeRange(start.frag.node, start.localOffset, end.frag.node, end.localOffset, f);
+  }
+
+  // Cross-text-node: try a range that crosses element boundaries. Some will
+  // fail via surroundContents (ranges that partially contain non-text nodes).
+  return wrapCeRange(start.frag.node, start.localOffset, end.frag.node, end.localOffset, f);
+}
+
+function wrapCeRange(startNode: Text, startOffset: number, endNode: Text, endOffset: number, f: Finding): HTMLElement | null {
+  try {
+    const range = document.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    const wrapper = document.createElement(CE_MARK_TAG);
+    wrapper.className = `${CE_MARK_TAG} lsd-sev-${f.severity}`;
+    wrapper.setAttribute('data-lsd-message', f.message);
+    wrapper.setAttribute('data-lsd-offset', String(f.offset));
+    range.surroundContents(wrapper);
+    return wrapper;
+  } catch {
+    // Range crosses element boundaries (e.g. inline formatting splits the
+    // phrase). Skipping the mark here means the finding still appears in
+    // the popover's list, just without an inline mark. Acceptable v1.
+    return null;
+  }
+}
+
+function unwrapCeMarks(state: EditorState) {
+  for (const m of state.marks) {
+    const parent = m.parentNode;
+    if (!parent) continue;
+    while (m.firstChild) parent.insertBefore(m.firstChild, m);
+    parent.removeChild(m);
+  }
+  state.marks = [];
+  // Coalesce adjacent text nodes so next scan's fragment offsets are tidy.
+  (state.editor as HTMLElement).normalize?.();
+}
+
+function getCeCaretOffset(fragments: CeFragment[]): number | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const r = sel.getRangeAt(0);
+  if (!r.collapsed) return null; // only preserve collapsed caret
+  if (r.startContainer.nodeType !== Node.TEXT_NODE) return null;
+  const node = r.startContainer as Text;
+  for (const f of fragments) {
+    if (f.node === node) return f.textOffset + r.startOffset;
+  }
+  return null;
+}
+
+function setCeCaretOffset(fragments: CeFragment[], targetOffset: number) {
+  const hit = findFragmentAt(fragments, targetOffset);
+  if (!hit) return;
+  try {
+    const range = document.createRange();
+    range.setStart(hit.frag.node, hit.localOffset);
+    range.setEnd(hit.frag.node, hit.localOffset);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  } catch { /* ignore */ }
+}
+
+function findingsEqual(a: Finding[], b: Finding[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].offset !== b[i].offset || a[i].length !== b[i].length || a[i].matchText !== b[i].matchText) return false;
+  }
+  return true;
+}
+
+function runScanCe(state: EditorState) {
+  const el = state.editor as HTMLElement;
+  if (!document.contains(el)) {
+    state.badge.remove();
+    state.resizeObserver?.disconnect();
+    editors.delete(el);
+    editorRegistry.delete(el);
+    return;
+  }
+
+  const { text, fragments } = extractCeText(el);
+  state.lastText = text;
+
+  if (text.length > SIZE_CAP) {
+    state.lastFindings = [];
+    updateBadge(state, -1);
+    if (state.marks.length > 0) {
+      state.applyingMarks = true;
+      unwrapCeMarks(state);
+      state.applyingMarks = false;
+    }
+    return;
+  }
+
+  const findings = scanText(text, rules, LANGUAGE);
+
+  if (findingsEqual(findings, state.lastFindings)) {
+    // Text may have changed (user typed whitespace) but findings are the
+    // same -- skip the DOM dance to avoid flickering marks.
+    state.lastFindings = findings;
+    updateBadge(state, findings.length);
+    if (popover && activeEditorEl === el) renderPopover(state);
+    return;
+  }
+
+  state.lastFindings = findings;
+  updateBadge(state, findings.length);
+
+  const caretOffset = getCeCaretOffset(fragments);
+
+  state.applyingMarks = true;
+  unwrapCeMarks(state);
+  const { fragments: fresh } = extractCeText(el);
+  // Wrap right-to-left so earlier offsets stay valid across splits.
+  const sorted = [...findings].sort((a, b) => b.offset - a.offset);
+  const wrapped: HTMLElement[] = [];
+  let minStart = Infinity;
+  for (const f of sorted) {
+    if (f.offset + f.length > minStart) continue;
+    const mark = wrapCeFinding(fresh, f, state);
+    if (mark) {
+      wrapped.push(mark);
+      minStart = f.offset;
+    }
+  }
+  state.marks = wrapped;
+  state.applyingMarks = false;
+
+  if (caretOffset !== null) {
+    const { fragments: final } = extractCeText(el);
+    setCeCaretOffset(final, caretOffset);
+  }
+
+  if (popover && activeEditorEl === el) renderPopover(state);
 }
 
 let globalListenersInstalled = false;
@@ -276,6 +573,13 @@ function processHover(x: number, y: number) {
     showTooltip(msg, x, y, key);
     return;
   }
+  const ceHit = findCeMarkAtPoint(x, y);
+  if (ceHit) {
+    const key = `ce:${ceHit.offset}`;
+    const msg = ceHit.mark.getAttribute('data-lsd-message') || '';
+    showTooltip(msg, x, y, key);
+    return;
+  }
   const rdHit = findRdMarkAtPoint(x, y);
   if (rdHit) {
     const key = `rd:${rdHit.index}`;
@@ -300,11 +604,39 @@ function onDocClick(e: MouseEvent) {
     return;
   }
 
+  const ceHit = findCeMarkAtPoint(e.clientX, e.clientY);
+  if (ceHit) {
+    const state = ceHit.state;
+    if (!popover || activeEditorEl !== state.editor) openPopover(state);
+    if (ceHit.offset >= 0) highlightPopoverFinding(ceHit.offset);
+    return;
+  }
+
   const rdHit = findRdMarkAtPoint(e.clientX, e.clientY);
   if (rdHit) {
     jumpToRdFinding(rdHit);
     return;
   }
+}
+
+function findCeMarkAtPoint(x: number, y: number): { state: EditorState; mark: HTMLElement; offset: number } | null {
+  for (const ed of editorRegistry) {
+    const s = editors.get(ed);
+    if (!s || s.kind !== 'contenteditable') continue;
+    if (s.marks.length === 0) continue;
+    const outer = (s.editor as HTMLElement).getBoundingClientRect();
+    if (x < outer.left || x > outer.right || y < outer.top || y > outer.bottom) continue;
+    for (const mark of s.marks) {
+      const rects = mark.getClientRects();
+      for (const r of rects) {
+        if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+          const offset = parseInt(mark.getAttribute('data-lsd-offset') || '-1', 10);
+          return { state: s, mark, offset };
+        }
+      }
+    }
+  }
+  return null;
 }
 
 function findRdMarkAtPoint(x: number, y: number): RdFinding | null {
@@ -400,12 +732,14 @@ function scheduleScan(state: EditorState) {
   if (state.debounceHandle !== null) window.clearTimeout(state.debounceHandle);
   state.debounceHandle = window.setTimeout(() => {
     state.debounceHandle = null;
-    runScan(state);
+    if (state.kind === 'contenteditable') runScanCe(state);
+    else runScan(state);
   }, DEBOUNCE_MS);
 }
 
 function runScan(state: EditorState) {
-  const text = state.editor.value ?? '';
+  const editor = state.editor as TextControl;
+  const text = editor.value ?? '';
   state.lastText = text;
   if (text.length > SIZE_CAP) {
     state.lastFindings = [];
@@ -580,7 +914,7 @@ function renderMarkFragments(f: Finding): string {
 // Popover
 // ---------------------------------------------------------------------------
 
-function togglePopover(editor: HTMLTextAreaElement | HTMLInputElement) {
+function togglePopover(editor: EditorEl) {
   if (popover && activeEditorEl === editor) {
     closePopover();
     return;
@@ -722,23 +1056,30 @@ function highlightPopoverFinding(offset: number) {
 
 function setEditorValue(state: EditorState, next: string): void {
   // Use the native value setter so React / Vue / Lit see the change.
+  const editor = state.editor as TextControl;
   const proto = state.kind === 'textarea'
     ? HTMLTextAreaElement.prototype
     : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
   if (setter) {
-    setter.call(state.editor, next);
+    setter.call(editor, next);
   } else {
-    state.editor.value = next;
+    editor.value = next;
   }
-  state.editor.dispatchEvent(new Event('input', { bubbles: true }));
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function applyCharFix(state: EditorState, finding: Finding) {
   if (finding.code !== 'char') return;
   const def = rules.chars.get(finding.matchText);
   if (!def || def.replacement === undefined) return;
-  const { editor } = state;
+
+  if (state.kind === 'contenteditable') {
+    applyCeCharFix(state, finding, def.replacement);
+    return;
+  }
+
+  const editor = state.editor as TextControl;
   const current = editor.value;
   const next = current.slice(0, finding.offset) + def.replacement + current.slice(finding.offset + finding.length);
   setEditorValue(state, next);
@@ -749,8 +1090,7 @@ function applyCharFix(state: EditorState, finding: Finding) {
 }
 
 function applyAllCharFixes(state: EditorState) {
-  // Apply right-to-left so earlier offsets stay valid as we mutate.
-  const fixes = state.lastFindings
+  const fixable = state.lastFindings
     .filter(f => f.code === 'char')
     .map(f => {
       const def = rules.chars.get(f.matchText);
@@ -759,17 +1099,56 @@ function applyAllCharFixes(state: EditorState) {
         : null;
     })
     .filter((x): x is { offset: number; length: number; replacement: string } => x !== null)
-    .sort((a, b) => b.offset - a.offset);
+    .sort((a, b) => b.offset - a.offset); // right-to-left preserves offsets
 
-  if (fixes.length === 0) return;
+  if (fixable.length === 0) return;
 
-  let next = state.editor.value;
-  for (const fx of fixes) {
+  if (state.kind === 'contenteditable') {
+    // Apply each one via execCommand so the undo stack sees N discrete
+    // edits. Doing a single big insertText would lose finding-level undo.
+    const el = state.editor as HTMLElement;
+    el.focus();
+    for (const fx of fixable) applyCeFixAtOffset(el, fx.offset, fx.length, fx.replacement);
+    // scheduleScan will fire via input events; no extra rescan needed.
+    return;
+  }
+
+  const editor = state.editor as TextControl;
+  let next = editor.value;
+  for (const fx of fixable) {
     next = next.slice(0, fx.offset) + fx.replacement + next.slice(fx.offset + fx.length);
   }
   setEditorValue(state, next);
-  state.editor.focus();
-  // runScan runs via the dispatched input event.
+  editor.focus();
+}
+
+function applyCeCharFix(state: EditorState, finding: Finding, replacement: string) {
+  const el = state.editor as HTMLElement;
+  el.focus();
+  applyCeFixAtOffset(el, finding.offset, finding.length, replacement);
+}
+
+// Sets the selection to the given extracted-text offset range inside a
+// contenteditable and runs execCommand('insertText'). Using execCommand
+// instead of direct DOM surgery preserves the undo stack (Cmd+Z in Gmail
+// works naturally) and lets the host framework react via its own input
+// handler.
+function applyCeFixAtOffset(el: HTMLElement, offset: number, length: number, replacement: string) {
+  const { fragments } = extractCeText(el);
+  const start = findFragmentAt(fragments, offset);
+  const end = findFragmentAt(fragments, offset + length);
+  if (!start || !end) return;
+  try {
+    const range = document.createRange();
+    range.setStart(start.frag.node, start.localOffset);
+    range.setEnd(end.frag.node, end.localOffset);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+    // execCommand is deprecated but remains the only reliable way to
+    // insert text into a contenteditable while preserving the undo stack.
+    document.execCommand('insertText', false, replacement);
+  } catch { /* selection failed; skip */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,6 +1394,22 @@ function injectStyles() {
       display: inline-block !important;
     }
     .${POPOVER_CLASS} .lsd-fix:hover { background: rgba(127,127,127,0.3) !important; }
+
+    /* ---- Contenteditable marks ---- */
+    ${CE_MARK_TAG} {
+      /* Wavy underline that matches the read-only mark style: keeps the
+         text legible in a writing context and doesn't disturb selection
+         gestures since we leave pointer-events at default (but clicks
+         bubble through to the contenteditable). */
+      text-decoration: underline wavy !important;
+      text-underline-offset: 2px !important;
+      text-decoration-thickness: 1.5px !important;
+      pointer-events: none !important;
+    }
+    ${CE_MARK_TAG}.lsd-sev-error       { text-decoration-color: #d73a49 !important; }
+    ${CE_MARK_TAG}.lsd-sev-warning     { text-decoration-color: #b08800 !important; }
+    ${CE_MARK_TAG}.lsd-sev-information { text-decoration-color: #0366d6 !important; }
+    ${CE_MARK_TAG}.lsd-sev-hint        { text-decoration-color: #6a737d !important; }
 
     /* ---- Read-only page scan ---- */
     ${RD_MARK_TAG} {
