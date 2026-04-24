@@ -49,9 +49,13 @@ function generateRulesModule() {
 
 function copyStatic() {
   if (!existsSync(distDir)) mkdirSync(distDir, { recursive: true });
-  for (const f of ['index.html', 'style.css']) {
-    const src = join(here, f);
-    if (existsSync(src)) copyFileSync(src, join(distDir, f));
+  // Copy every static .html / .css file in web/. Currently index.html,
+  // privacy.html, and style.css -- automatic so we don't have to update
+  // this list when new pages are added.
+  for (const f of readdirSync(here)) {
+    if (f.endsWith('.html') || f.endsWith('.css')) {
+      copyFileSync(join(here, f), join(distDir, f));
+    }
   }
 }
 
