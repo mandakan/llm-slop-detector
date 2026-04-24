@@ -7,15 +7,20 @@ function $(id: string): HTMLElement {
   return el;
 }
 
+function clearChildren(el: HTMLElement) {
+  while (el.firstChild) el.removeChild(el.firstChild);
+}
+
 function renderPacks(container: HTMLElement, prefs: Prefs) {
-  container.innerHTML = '';
+  clearChildren(container);
   for (const pack of BUILTIN_PACKS) {
     const id = `pack-${pack}`;
     const label = document.createElement('label');
     label.className = 'pack';
-    label.innerHTML = `<input type="checkbox" id="${id}" value="${pack}"> <span>${pack}</span>`;
-    container.appendChild(label);
-    const cb = label.querySelector('input') as HTMLInputElement;
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = id;
+    cb.value = pack;
     cb.checked = prefs.enabledPacks.includes(pack);
     cb.addEventListener('change', async () => {
       const current = await getPrefs();
@@ -23,11 +28,15 @@ function renderPacks(container: HTMLElement, prefs: Prefs) {
       if (cb.checked) set.add(pack); else set.delete(pack);
       await updatePrefs({ enabledPacks: [...set] });
     });
+    const span = document.createElement('span');
+    span.textContent = pack;
+    label.append(cb, document.createTextNode(' '), span);
+    container.appendChild(label);
   }
 }
 
 function renderDisabledHosts(container: HTMLElement, prefs: Prefs) {
-  container.innerHTML = '';
+  clearChildren(container);
   if (prefs.disabledHosts.length === 0) {
     const li = document.createElement('li');
     li.className = 'empty';
@@ -37,15 +46,18 @@ function renderDisabledHosts(container: HTMLElement, prefs: Prefs) {
   }
   for (const host of [...prefs.disabledHosts].sort()) {
     const li = document.createElement('li');
-    li.innerHTML = `<code></code> <button type="button">Re-enable</button>`;
-    (li.querySelector('code') as HTMLElement).textContent = host;
-    const btn = li.querySelector('button') as HTMLButtonElement;
+    const code = document.createElement('code');
+    code.textContent = host;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Re-enable';
     btn.addEventListener('click', async () => {
       const current = await getPrefs();
       const set = new Set(current.disabledHosts);
       set.delete(host);
       await updatePrefs({ disabledHosts: [...set] });
     });
+    li.append(code, document.createTextNode(' '), btn);
     container.appendChild(li);
   }
 }
