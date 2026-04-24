@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.1...llm-slop-detector-v0.6.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* run npm publish via npx instead of upgrading in place ([#58](https://github.com/mandakan/llm-slop-detector/issues/58)) ([ae3a370](https://github.com/mandakan/llm-slop-detector/commit/ae3a3702cc9ccb5014f06905b8ae7d4158a308f3))
+
 ## [0.6.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.0...llm-slop-detector-v0.6.1) (2026-04-24)
 
 
