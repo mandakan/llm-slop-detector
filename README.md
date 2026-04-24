@@ -296,9 +296,16 @@ Options:
 
 Exit code: `0` if no findings at or above the severity threshold, `1` if any, `2` on argument errors.
 
-### Running locally
+### Install
 
-From a clone:
+From npm:
+
+```bash
+npx llm-slop-detector README.md        # one-shot
+npm install -g llm-slop-detector       # or put `llm-slop` on PATH
+```
+
+From a clone (for hacking on the rules):
 
 ```bash
 npm install
@@ -306,13 +313,6 @@ npm run compile
 ./out/cli.js README.md
 # or
 npm run slop -- README.md
-```
-
-From an installed copy of the extension (the VSIX bundles the CLI): link it globally.
-
-```bash
-cd ~/.vscode/extensions/thias-se.llm-slop-detector-*
-npm link   # optional -- exposes `llm-slop` on PATH
 ```
 
 ### Pre-commit hook
@@ -372,7 +372,7 @@ Configure your MCP client (Claude Code, Claude Desktop, etc.):
   "mcpServers": {
     "llm-slop": {
       "command": "npx",
-      "args": ["-y", "llm-slop-detector", "llm-slop-mcp"]
+      "args": ["-y", "-p", "llm-slop-detector", "llm-slop-mcp"]
     }
   }
 }

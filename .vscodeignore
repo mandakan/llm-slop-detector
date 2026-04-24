@@ -8,6 +8,7 @@ test-fixtures/**
 .gitignore
 .slopignore
 .vscodeignore
+.npmignore
 tsconfig.json
 package-lock.json
 CLAUDE.md
