@@ -140,7 +140,11 @@ function teardownEditors() {
 // Editor discovery
 // ---------------------------------------------------------------------------
 
-const TEXT_CONTROL_SELECTOR = 'textarea, input[type=text]';
+// `input:not([type])` covers Gmail's subject row and other hosts that
+// leave the attribute off (HTML default type is text). We still exclude
+// typed inputs like email/url/password/search where slop scanning would
+// either clash with validation or just produce noise.
+const TEXT_CONTROL_SELECTOR = 'textarea, input[type=text], input:not([type])';
 // [role="textbox"] with aria-multiline catches rich editors like Gmail's
 // compose body that set the contenteditable attribute dynamically (or via
 // designMode on a nested document).
