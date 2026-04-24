@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LLM Slop Detector",
   "version": "0.8.0",
-  "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type in any textarea on the web. Runs entirely in your browser.",
+  "description": "Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type -- or in any page you're reading. Local only.",
   "permissions": [
     "storage"
   ],
