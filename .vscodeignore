@@ -4,7 +4,9 @@
 .claude/**
 docs/**
 src/**
+test-fixtures/**
 .gitignore
+.slopignore
 .vscodeignore
 tsconfig.json
 package-lock.json

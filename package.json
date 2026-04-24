@@ -204,6 +204,10 @@
       {
         "command": "llmSlopDetector.scanSelection",
         "title": "LLM Slop Detector: Scan selection"
+      },
+      {
+        "command": "llmSlopDetector.scanWorkspace",
+        "title": "LLM Slop Detector: Scan workspace"
       }
     ]
   },
