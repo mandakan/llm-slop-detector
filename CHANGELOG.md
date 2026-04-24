@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.8.0...llm-slop-detector-v0.8.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* AMO validation (data_collection_permissions + innerHTML refactor) ([#78](https://github.com/mandakan/llm-slop-detector/issues/78)) ([a368949](https://github.com/mandakan/llm-slop-detector/commit/a368949d9fb40ee0909b60a03bdbf92d4eebf184))
+* Chrome Web Store submission (description length + single-purpose doc) ([#76](https://github.com/mandakan/llm-slop-detector/issues/76)) ([950aa04](https://github.com/mandakan/llm-slop-detector/commit/950aa0463a5b37a415b52efbfb2489ccf6319628))
+
 ## [0.8.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.7.0...llm-slop-detector-v0.8.0) (2026-04-24)
 
 
