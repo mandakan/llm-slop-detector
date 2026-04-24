@@ -2,7 +2,7 @@
   "name": "llm-slop-detector",
   "displayName": "LLM Slop Detector",
   "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases in markdown and plain text.",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "publisher": "thias-se",
   "engines": {
     "vscode": "^1.95.0"
