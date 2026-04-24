@@ -66,31 +66,39 @@ let activeEditorEl: (HTMLTextAreaElement | HTMLInputElement) | null = null;
 
 async function main() {
   prefs = await getPrefs();
-  if (!prefs.enabled || isHostDisabled(prefs, HOST)) return;
-
   rules = buildRules(prefs.enabledPacks);
   injectStyles();
-  scanDocument();
-  observeMutations();
+  // The page-scan message handler is always installed so the user can run a
+  // read-only scan even on hosts where editor scanning is disabled (or when
+  // editor scanning is off globally).
+  installMessageHandler();
+
+  const editorScanningOn = prefs.enabled && !isHostDisabled(prefs, HOST);
+  if (editorScanningOn) {
+    scanDocument();
+    observeMutations();
+  }
 
   onPrefsChanged(next => {
     const wasOn = prefs.enabled && !isHostDisabled(prefs, HOST);
     prefs = next;
     const isOn = prefs.enabled && !isHostDisabled(prefs, HOST);
-    if (!isOn) {
-      teardown();
+    rules = buildRules(prefs.enabledPacks);
+
+    if (!isOn && wasOn) {
+      teardownEditors();
       return;
     }
-    if (!wasOn) {
+    if (isOn && !wasOn) {
       // Re-init from scratch -- easier than tracking which editors we had.
-      rules = buildRules(prefs.enabledPacks);
       injectStyles();
       scanDocument();
       return;
     }
-    // Packs changed: rebuild rules and rescan every known editor.
-    rules = buildRules(prefs.enabledPacks);
-    rescanAll();
+    if (isOn) {
+      // Packs changed: rescan every known editor with the new rules.
+      rescanAll();
+    }
   });
 }
 
@@ -112,15 +120,15 @@ function buildRules(enabledPacks: string[]): RuleSet {
   });
 }
 
-function teardown() {
+function teardownEditors() {
   for (const ed of editorRegistry) {
     const s = editors.get(ed);
     s?.resizeObserver?.disconnect();
+    s?.badge.remove();
+    s?.mirror?.remove();
     editors.delete(ed);
   }
   editorRegistry.clear();
-  document.querySelectorAll(`.${HOST_CLASS}`).forEach(n => n.remove());
-  document.getElementById(STYLE_ID)?.remove();
   closePopover();
 }
 
@@ -261,25 +269,52 @@ function onDocMouseMove(e: MouseEvent) {
 }
 
 function processHover(x: number, y: number) {
-  const hit = findMarkAtPoint(x, y);
-  if (!hit) { hideTooltip(); return; }
-  const key = `${hit.mirrorKey}:${hit.offset}`;
-  const msg = hit.mark.getAttribute('data-lsd-message') || '';
-  showTooltip(msg, x, y, key);
+  const edHit = findMarkAtPoint(x, y);
+  if (edHit) {
+    const key = `ed:${edHit.mirrorKey}:${edHit.offset}`;
+    const msg = edHit.mark.getAttribute('data-lsd-message') || '';
+    showTooltip(msg, x, y, key);
+    return;
+  }
+  const rdHit = findRdMarkAtPoint(x, y);
+  if (rdHit) {
+    const key = `rd:${rdHit.index}`;
+    const msg = rdHit.element.getAttribute('data-lsd-message') || '';
+    showTooltip(msg, x, y, key);
+    return;
+  }
+  hideTooltip();
 }
 
 function onDocClick(e: MouseEvent) {
-  // Ignore clicks inside our own popover / badge so they don't retrigger
-  // the jump when the user interacts with the popover itself.
+  // Ignore clicks inside our own popover / panel / badge so they don't
+  // retrigger the jump when the user interacts with our own UI.
   const target = e.target as HTMLElement | null;
   if (target?.closest(`.${HOST_CLASS}`)) return;
-  const hit = findMarkAtPoint(e.clientX, e.clientY);
-  if (!hit) return;
-  // Native textarea click has already run (focus + caret placement). We
-  // don't preventDefault; we only pop open the popover on top.
-  const state = hit.state;
-  if (!popover || activeEditorEl !== state.editor) openPopover(state);
-  if (hit.offset >= 0) highlightPopoverFinding(hit.offset);
+
+  const edHit = findMarkAtPoint(e.clientX, e.clientY);
+  if (edHit) {
+    const state = edHit.state;
+    if (!popover || activeEditorEl !== state.editor) openPopover(state);
+    if (edHit.offset >= 0) highlightPopoverFinding(edHit.offset);
+    return;
+  }
+
+  const rdHit = findRdMarkAtPoint(e.clientX, e.clientY);
+  if (rdHit) {
+    jumpToRdFinding(rdHit);
+    return;
+  }
+}
+
+function findRdMarkAtPoint(x: number, y: number): RdFinding | null {
+  for (const rf of rdFindings) {
+    const rects = rf.element.getClientRects();
+    for (const r of rects) {
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return rf;
+    }
+  }
+  return null;
 }
 
 type MarkHit = { mark: HTMLElement; state: EditorState; mirrorKey: string; offset: number };
@@ -980,8 +1015,362 @@ function injectStyles() {
       display: inline-block !important;
     }
     .${POPOVER_CLASS} .lsd-fix:hover { background: rgba(127,127,127,0.3) !important; }
+
+    /* ---- Read-only page scan ---- */
+    ${RD_MARK_TAG} {
+      border-radius: 2px !important;
+      /* Subtle styling: a thin underline so reading flow isn't disrupted as
+         badly as a background wash. Colour by severity. */
+      text-decoration: underline wavy !important;
+      text-underline-offset: 2px !important;
+      text-decoration-thickness: 1.5px !important;
+      cursor: help !important;
+    }
+    ${RD_MARK_TAG}.lsd-sev-error       { text-decoration-color: #d73a49 !important; }
+    ${RD_MARK_TAG}.lsd-sev-warning     { text-decoration-color: #b08800 !important; }
+    ${RD_MARK_TAG}.lsd-sev-information { text-decoration-color: #0366d6 !important; }
+    ${RD_MARK_TAG}.lsd-sev-hint        { text-decoration-color: #6a737d !important; }
+    @keyframes lsd-rd-pulse {
+      0%   { background: rgba(3, 102, 214, 0.5); }
+      100% { background: transparent; }
+    }
+    ${RD_MARK_TAG}.lsd-pulse {
+      animation: lsd-rd-pulse 1400ms ease-out 1 !important;
+      border-radius: 3px !important;
+    }
+
+    .${RD_PANEL_CLASS} {
+      position: fixed !important;
+      right: 16px !important;
+      bottom: 16px !important;
+      width: 340px !important;
+      max-height: 70vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      z-index: 2147483641 !important;
+      background: #ffffff !important;
+      color: #1c1c1c !important;
+      border: 1px solid #d9d9d4 !important;
+      border-radius: 6px !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18) !important;
+      font-size: 13px !important;
+      line-height: 1.4 !important;
+    }
+    @media (prefers-color-scheme: dark) {
+      .${RD_PANEL_CLASS} {
+        background: #1c1f24 !important;
+        color: #e6e6e6 !important;
+        border-color: #2a2d33 !important;
+      }
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-head {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      padding: 6px 10px !important;
+      border-bottom: 1px solid #e5e5e0 !important;
+    }
+    @media (prefers-color-scheme: dark) {
+      .${RD_PANEL_CLASS} .lsd-rd-head { border-bottom-color: #2a2d33 !important; }
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-title { font-weight: 600 !important; font-size: 12px !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-close {
+      all: unset !important;
+      cursor: pointer !important;
+      padding: 2px 6px !important;
+      border-radius: 3px !important;
+      opacity: 0.7 !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-close:hover { opacity: 1 !important; background: rgba(127,127,127,0.15) !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-summary {
+      padding: 6px 10px !important;
+      border-bottom: 1px solid #e5e5e0 !important;
+      font-size: 12px !important;
+    }
+    @media (prefers-color-scheme: dark) {
+      .${RD_PANEL_CLASS} .lsd-rd-summary { border-bottom-color: #2a2d33 !important; }
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-counts { font-size: 14px !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-sevbits { margin-top: 4px !important; display: flex !important; gap: 6px !important; flex-wrap: wrap !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-sev {
+      font-size: 11px !important;
+      padding: 1px 6px !important;
+      border-radius: 3px !important;
+      color: #fff !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-sev.lsd-sev-error       { background: #d73a49 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-sev.lsd-sev-warning     { background: #b08800 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-sev.lsd-sev-information { background: #0366d6 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-sev.lsd-sev-hint        { background: #6a737d !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-cap {
+      margin-top: 6px !important;
+      padding: 4px 6px !important;
+      background: rgba(176, 136, 0, 0.15) !important;
+      border-radius: 3px !important;
+      font-size: 11px !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-empty {
+      color: #666 !important;
+      padding: 4px 0 !important;
+      font-style: italic !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-list {
+      overflow-y: auto !important;
+      padding: 6px 10px !important;
+      flex: 1 !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-item {
+      padding: 6px 8px !important;
+      margin-bottom: 6px !important;
+      border-left: 3px solid #d9d9d4 !important;
+      border-radius: 3px !important;
+      background: rgba(127,127,127,0.05) !important;
+      cursor: pointer !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-item:hover { background: rgba(127,127,127,0.12) !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-item.lsd-sev-error       { border-left-color: #d73a49 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-item.lsd-sev-warning     { border-left-color: #b08800 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-item.lsd-sev-information { border-left-color: #0366d6 !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-item.lsd-sev-hint        { border-left-color: #6a737d !important; }
+    .${RD_PANEL_CLASS} .lsd-rd-item-head {
+      display: flex !important; gap: 6px !important; align-items: center !important;
+      flex-wrap: wrap !important; margin-bottom: 4px !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-actions {
+      padding: 6px 10px !important;
+      border-top: 1px solid #e5e5e0 !important;
+    }
+    @media (prefers-color-scheme: dark) {
+      .${RD_PANEL_CLASS} .lsd-rd-actions { border-top-color: #2a2d33 !important; }
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-clear {
+      all: unset !important;
+      font: inherit !important;
+      font-size: 12px !important;
+      padding: 3px 8px !important;
+      background: rgba(215, 58, 73, 0.15) !important;
+      color: #d73a49 !important;
+      border-radius: 3px !important;
+      cursor: pointer !important;
+      font-weight: 600 !important;
+    }
+    .${RD_PANEL_CLASS} .lsd-rd-clear:hover { background: rgba(215, 58, 73, 0.25) !important; }
   `;
   document.documentElement.appendChild(style);
+}
+
+// ---------------------------------------------------------------------------
+// Read-only page scan (#69)
+// ---------------------------------------------------------------------------
+
+const RD_MARK_TAG = 'lsd-rd-mark';
+const RD_PANEL_CLASS = 'lsd-rd-panel';
+const RD_TOTAL_CAP = 500 * 1024;
+const RD_MIN_NODE_CHARS = 12;
+
+// Elements whose text we never scan in read-only mode. Script/style is a
+// parse-safety thing; pre/code/kbd/samp/tt/var are technical and would false-
+// positive on terminology; textarea/input are covered by the editor path;
+// template/iframe/svg/math/canvas either hide text or aren't useful.
+const RD_SKIP_TAGS = new Set([
+  'script', 'style', 'noscript', 'template', 'iframe',
+  'textarea', 'input', 'code', 'pre', 'samp', 'kbd', 'tt', 'var',
+  'svg', 'math', 'video', 'audio', 'object', 'embed', 'canvas',
+]);
+
+type RdFinding = { finding: Finding; element: HTMLElement; index: number };
+let rdFindings: RdFinding[] = [];
+let rdPanel: HTMLElement | null = null;
+
+function installMessageHandler() {
+  const api = (globalThis as any).browser ?? (globalThis as any).chrome;
+  api.runtime.onMessage.addListener((msg: any, _sender: any, sendResponse: (r: unknown) => void) => {
+    if (msg?.type === 'lsd:runPageScan') {
+      runPageScan();
+      sendResponse({ ok: true });
+    } else if (msg?.type === 'lsd:clearPageScan') {
+      clearPageScan();
+      sendResponse({ ok: true });
+    }
+    // Return value matters for cross-browser compatibility:
+    // - Chrome MV3: return true keeps the response channel open for async
+    //   sendResponse; falsy closes it. We call sendResponse synchronously
+    //   above, so false is correct.
+    // - Firefox: same semantics for the falsy case.
+    return false;
+  });
+}
+
+function runPageScan() {
+  if (!prefs.readOnlyEnabled) return;
+  clearPageScan();
+
+  const texts = collectReadOnlyTextNodes(document.body);
+  let totalScanned = 0;
+  let capHit = false;
+
+  for (const node of texts) {
+    if (!node.parentNode) continue; // removed between collection and wrap
+    const text = node.nodeValue ?? '';
+    if (text.length === 0) continue;
+    if (totalScanned + text.length > RD_TOTAL_CAP) { capHit = true; break; }
+    totalScanned += text.length;
+
+    const findings = scanText(text, rules, 'plaintext');
+    if (findings.length === 0) continue;
+
+    // Right-to-left so earlier offsets remain valid as we split the text
+    // node from the right. Skip findings that overlap with a later-wrapped
+    // range (shouldn't happen with current rules but is cheap insurance).
+    const sorted = [...findings].sort((a, b) => b.offset - a.offset);
+    let lastStart = Infinity;
+    for (const f of sorted) {
+      if (f.offset + f.length > lastStart) continue;
+      const mark = wrapTextNodeRange(node, f.offset, f.length, f.severity, f.message);
+      if (!mark) continue;
+      lastStart = f.offset;
+      rdFindings.push({ finding: f, element: mark, index: rdFindings.length });
+    }
+  }
+
+  // Sort results by document order so "jump next" feels like reading.
+  rdFindings.sort((a, b) => compareNodePositions(a.element, b.element));
+  rdFindings.forEach((rf, i) => { rf.index = i; rf.element.setAttribute('data-lsd-rd-index', String(i)); });
+
+  renderResultsPanel(capHit, totalScanned);
+}
+
+function collectReadOnlyTextNodes(root: Node): Text[] {
+  const out: Text[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element;
+        const tag = el.tagName.toLowerCase();
+        if (RD_SKIP_TAGS.has(tag)) return NodeFilter.FILTER_REJECT;
+        // Our own injected DOM, or a user editor we've attached to.
+        if (el.classList.contains(HOST_CLASS)) return NodeFilter.FILTER_REJECT;
+        const ce = el.getAttribute('contenteditable');
+        if (ce === '' || ce === 'true' || ce === 'plaintext-only') return NodeFilter.FILTER_REJECT;
+        // Hidden subtrees.
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_SKIP;
+      }
+      const t = node as Text;
+      const v = t.nodeValue ?? '';
+      if (v.trim().length < RD_MIN_NODE_CHARS) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  let n: Node | null;
+  while ((n = walker.nextNode())) {
+    if (n.nodeType === Node.TEXT_NODE) out.push(n as Text);
+  }
+  return out;
+}
+
+function wrapTextNodeRange(node: Text, offset: number, length: number, severity: Severity, message: string): HTMLElement | null {
+  try {
+    const range = document.createRange();
+    range.setStart(node, offset);
+    range.setEnd(node, offset + length);
+    const wrapper = document.createElement(RD_MARK_TAG);
+    wrapper.className = `lsd-rd-mark lsd-sev-${severity}`;
+    wrapper.setAttribute('data-lsd-message', message);
+    range.surroundContents(wrapper);
+    return wrapper;
+  } catch {
+    return null;
+  }
+}
+
+function compareNodePositions(a: Node, b: Node): number {
+  if (a === b) return 0;
+  const pos = a.compareDocumentPosition(b);
+  if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+  if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+  return 0;
+}
+
+function clearPageScan() {
+  for (const rf of rdFindings) {
+    const el = rf.element;
+    const parent = el.parentNode;
+    if (!parent) continue;
+    // Unwrap: move children out, remove the wrapper.
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+    parent.normalize?.();
+  }
+  rdFindings = [];
+  rdPanel?.remove();
+  rdPanel = null;
+}
+
+function renderResultsPanel(capHit: boolean, bytesScanned: number) {
+  const panel = document.createElement('div');
+  panel.className = `${HOST_CLASS} ${RD_PANEL_CLASS}`;
+  panel.innerHTML = `
+    <div class="lsd-rd-head">
+      <span class="lsd-rd-title">Page scan</span>
+      <button class="lsd-rd-close" type="button" aria-label="Close">x</button>
+    </div>
+    <div class="lsd-rd-summary"></div>
+    <div class="lsd-rd-list"></div>
+    <div class="lsd-rd-actions">
+      <button class="lsd-rd-clear" type="button">Clear highlights</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  rdPanel = panel;
+
+  const counts: Record<Severity, number> = { error: 0, warning: 0, information: 0, hint: 0 };
+  for (const rf of rdFindings) counts[rf.finding.severity]++;
+
+  const summary = panel.querySelector('.lsd-rd-summary') as HTMLElement;
+  const total = rdFindings.length;
+  const sevBits = (['error', 'warning', 'information', 'hint'] as Severity[])
+    .filter(s => counts[s] > 0)
+    .map(s => `<span class="lsd-rd-sev lsd-sev-${s}">${counts[s]} ${s}</span>`)
+    .join(' ');
+  const capBit = capHit
+    ? `<div class="lsd-rd-cap">Page exceeded ${RD_TOTAL_CAP / 1024} KB -- scanned first ${Math.round(bytesScanned / 1024)} KB.</div>`
+    : '';
+  summary.innerHTML = total === 0
+    ? '<div class="lsd-rd-empty">No slop detected on this page.</div>'
+    : `<div class="lsd-rd-counts"><strong>${total}</strong> finding${total === 1 ? '' : 's'}</div><div class="lsd-rd-sevbits">${sevBits}</div>${capBit}`;
+
+  const list = panel.querySelector('.lsd-rd-list') as HTMLElement;
+  for (const rf of rdFindings) {
+    const row = document.createElement('div');
+    row.className = `lsd-rd-item lsd-sev-${rf.finding.severity}`;
+    row.innerHTML = `
+      <div class="lsd-rd-item-head">
+        <span class="lsd-badge-sev lsd-sev-${escapeAttr(rf.finding.severity)}">${escapeText(rf.finding.severity)}</span>
+        <code class="lsd-match">${escapeText(rf.finding.matchText || '(empty)')}</code>
+      </div>
+      <div class="lsd-msg">${escapeText(rf.finding.message)}</div>
+    `;
+    row.addEventListener('click', () => jumpToRdFinding(rf));
+    list.appendChild(row);
+  }
+
+  (panel.querySelector('.lsd-rd-close') as HTMLElement).addEventListener('click', () => {
+    panel.remove();
+    rdPanel = null;
+  });
+  (panel.querySelector('.lsd-rd-clear') as HTMLElement).addEventListener('click', () => {
+    clearPageScan();
+  });
+}
+
+function jumpToRdFinding(rf: RdFinding) {
+  rf.element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  rf.element.classList.remove('lsd-pulse');
+  void rf.element.offsetWidth;
+  rf.element.classList.add('lsd-pulse');
+  window.setTimeout(() => rf.element.classList.remove('lsd-pulse'), 1500);
 }
 
 function escapeText(s: string): string {

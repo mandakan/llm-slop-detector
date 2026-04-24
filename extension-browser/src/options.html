@@ -11,6 +11,15 @@
     <p class="tagline">Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases in any textarea on the web.</p>
 
     <section>
+      <h2>Read-only page scanning</h2>
+      <p class="hint">When on, the toolbar icon shows a "Scan this page" button that highlights slop in any webpage you're reading (not just textareas). Off by default if you only want to lint your own writing.</p>
+      <label class="toggle">
+        <input type="checkbox" id="readonly-enabled">
+        <span>Enable read-only page scanning</span>
+      </label>
+    </section>
+
+    <section>
       <h2>Rule packs</h2>
       <p class="hint">Core rules are always on. Packs add extra model-specific or domain-specific phrases.</p>
       <div id="packs" class="packs"></div>

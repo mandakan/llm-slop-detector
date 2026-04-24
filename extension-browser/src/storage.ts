@@ -10,12 +10,14 @@ export type Prefs = {
   enabled: boolean;
   enabledPacks: string[];
   disabledHosts: string[];
+  readOnlyEnabled: boolean;
 };
 
 export const DEFAULTS: Prefs = {
   enabled: true,
   enabledPacks: [],
   disabledHosts: [],
+  readOnlyEnabled: true,
 };
 
 const KEY = 'prefs';
@@ -31,6 +33,7 @@ export async function getPrefs(): Promise<Prefs> {
     disabledHosts: Array.isArray(stored?.disabledHosts)
       ? (stored!.disabledHosts as unknown[]).filter((x): x is string => typeof x === 'string')
       : DEFAULTS.disabledHosts,
+    readOnlyEnabled: typeof stored?.readOnlyEnabled === 'boolean' ? stored.readOnlyEnabled : DEFAULTS.readOnlyEnabled,
   };
 }
 

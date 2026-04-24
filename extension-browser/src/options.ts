@@ -54,12 +54,18 @@ async function init() {
   let prefs = await getPrefs();
   const packsEl = $('packs');
   const hostsEl = $('disabled-hosts');
+  const roToggle = $('readonly-enabled') as HTMLInputElement;
   renderPacks(packsEl, prefs);
   renderDisabledHosts(hostsEl, prefs);
+  roToggle.checked = prefs.readOnlyEnabled;
+  roToggle.addEventListener('change', async () => {
+    await updatePrefs({ readOnlyEnabled: roToggle.checked });
+  });
   onPrefsChanged(next => {
     prefs = next;
     renderPacks(packsEl, prefs);
     renderDisabledHosts(hostsEl, prefs);
+    roToggle.checked = prefs.readOnlyEnabled;
   });
 }
 

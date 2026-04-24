@@ -55,6 +55,34 @@ async function init() {
     else window.open(api.runtime.getURL('options.html'));
   });
 
+  // Page-scan button: only visible when read-only mode is enabled AND we're
+  // on a valid http(s) tab.
+  const pageScanSection = $('page-scan-section');
+  const scanBtn = $('scan-page') as HTMLButtonElement;
+  if (prefs.readOnlyEnabled && host) {
+    pageScanSection.hidden = false;
+    scanBtn.addEventListener('click', async () => {
+      try {
+        const tabs = await api.tabs.query({ active: true, currentWindow: true });
+        const tabId = tabs[0]?.id;
+        if (tabId == null) return;
+        await api.tabs.sendMessage(tabId, { type: 'lsd:runPageScan' });
+        window.close();
+      } catch (e) {
+        // Common cause: the tab was loaded before the extension was
+        // installed or reloaded, so the content script isn't injected
+        // in it yet. A tab reload fixes it.
+        const msg = String((e as Error)?.message ?? e);
+        if (/receiving end does not exist|could not establish/i.test(msg)) {
+          scanBtn.textContent = 'Reload tab first';
+        } else {
+          scanBtn.textContent = 'Scan failed';
+        }
+        window.setTimeout(() => { scanBtn.textContent = 'Scan this page'; }, 2000);
+      }
+    });
+  }
+
   function renderStatus() {
     if (!prefs.enabled) {
       statusEl.textContent = 'Off everywhere. Reload the page to take effect.';

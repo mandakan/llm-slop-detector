@@ -45,6 +45,14 @@ h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
   color: var(--muted);
   font-size: 0.9rem;
 }
+.toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.toggle input { margin: 0; }
 .packs {
   display: flex;
   flex-wrap: wrap;
