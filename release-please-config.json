@@ -4,7 +4,14 @@
     ".": {
       "release-type": "node",
       "bump-minor-pre-major": true,
-      "bump-patch-for-minor-pre-major": false
+      "bump-patch-for-minor-pre-major": false,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "extension-browser/manifest.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }

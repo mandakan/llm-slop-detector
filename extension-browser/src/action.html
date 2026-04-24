@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LLM Slop Detector</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <strong>LLM Slop Detector</strong>
+  </header>
+  <section>
+    <label class="toggle">
+      <input type="checkbox" id="enabled">
+      <span>Scan new editors</span>
+    </label>
+    <label class="toggle" id="host-toggle-wrap" hidden>
+      <input type="checkbox" id="host-enabled">
+      <span>Enabled on <strong id="host-label"></strong></span>
+    </label>
+  </section>
+  <section class="note">
+    <p id="status">Reload the page after changing settings.</p>
+  </section>
+  <footer>
+    <button type="button" id="open-options">Rule packs...</button>
+    <a id="github-link" href="https://github.com/mandakan/llm-slop-detector" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+  <script src="action.js"></script>
+</body>
+</html>

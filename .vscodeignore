@@ -6,6 +6,9 @@ docs/**
 src/**
 web/**
 web-dist/**
+extension-browser/**
+extension-browser-dist/**
+llm-slop-detector-browser-*.zip
 test-fixtures/**
 .gitignore
 .slopignore

@@ -232,9 +232,13 @@
     "package": "npx --yes @vscode/vsce package",
     "slop": "node ./out/cli.js",
     "build:web": "node web/build.mjs",
-    "dev:web": "node web/build.mjs --watch"
+    "dev:web": "node web/build.mjs --watch",
+    "build:browser": "node extension-browser/build.mjs",
+    "dev:browser": "node extension-browser/build.mjs --watch",
+    "package:browser": "node extension-browser/build.mjs --zip"
   },
   "devDependencies": {
+    "@types/chrome": "^0.1.40",
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.95.0",
     "esbuild": "^0.28.0",

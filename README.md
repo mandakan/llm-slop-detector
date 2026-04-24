@@ -11,6 +11,30 @@ A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, a
 
 No install needed -- paste text into the [web playground](https://mandakan.github.io/llm-slop-detector/) and get findings instantly. Everything runs in your browser; nothing is uploaded.
 
+## Browser extension (Chrome, Arc, Firefox)
+
+A WebExtension that scans `<textarea>` and text inputs as you type on any webpage, showing a small "N slop" badge next to each editor. Click the badge for a per-finding popover with severity, reason, source pack, and a "Fix this" button for deterministic character fixes (em dash, curly quotes, zero-width, etc.). Runs entirely in the browser -- no network calls, no telemetry.
+
+**Install from source (until stores are wired up):**
+
+```sh
+npm ci
+npm run build:browser
+# -> extension-browser-dist/ is the unpacked extension
+```
+
+- **Chrome / Arc / Edge / Brave:** visit `chrome://extensions`, flip on "Developer mode", click "Load unpacked", pick `extension-browser-dist/`.
+- **Firefox:** visit `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on...", pick `extension-browser-dist/manifest.json`. The add-on unloads when Firefox quits.
+
+Toggle off globally (or per-site) via the extension's toolbar button. Pick rule packs in the options page.
+
+### Known limitations (v1)
+
+- `contenteditable` editors (Gmail compose, Substack, Notion, LinkedIn) are not yet supported -- only `<textarea>` and `<input type=text>`.
+- Google Docs uses a canvas-based renderer with no real DOM text; the extension can't see its contents and won't work there.
+- Cross-origin iframes are invisible for the same-origin-policy reason.
+- No inline `<mark>` highlighting over the textarea yet; findings are listed in the popover only.
+
 ## Features
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs

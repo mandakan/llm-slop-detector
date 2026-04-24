@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LLM Slop Detector -- Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>LLM Slop Detector</h1>
+    <p class="tagline">Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases in any textarea on the web.</p>
+
+    <section>
+      <h2>Rule packs</h2>
+      <p class="hint">Core rules are always on. Packs add extra model-specific or domain-specific phrases.</p>
+      <div id="packs" class="packs"></div>
+    </section>
+
+    <section>
+      <h2>Disabled sites</h2>
+      <p class="hint">Per-site toggles live in the extension's action popup. Hosts you've turned off:</p>
+      <ul id="disabled-hosts" class="hosts"></ul>
+    </section>
+
+    <section>
+      <h2>Privacy</h2>
+      <ul class="privacy">
+        <li>No network requests. Ever. All scanning runs locally.</li>
+        <li>No telemetry. No analytics.</li>
+        <li>Settings are stored in <code>chrome.storage.local</code>. Not synced.</li>
+        <li>Nothing you type is logged, persisted, or transmitted.</li>
+      </ul>
+      <p class="hint">
+        Source: <a href="https://github.com/mandakan/llm-slop-detector" target="_blank" rel="noopener">github.com/mandakan/llm-slop-detector</a>.
+        Pack attribution: <a href="https://github.com/mandakan/llm-slop-detector/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener">THIRD_PARTY_NOTICES.md</a>.
+      </p>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

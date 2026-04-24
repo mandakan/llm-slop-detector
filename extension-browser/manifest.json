@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "LLM Slop Detector",
+  "version": "0.7.0",
+  "description": "Highlights invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type in any textarea on the web. Runs entirely in your browser.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_title": "LLM Slop Detector",
+    "default_popup": "action.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "llm-slop-detector@thias.se",
+      "strict_min_version": "128.0"
+    }
+  }
+}

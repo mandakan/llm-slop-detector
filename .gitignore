@@ -4,6 +4,11 @@ web-dist/
 web/rules.generated.ts
 web/**/*.js
 web/**/*.js.map
+extension-browser-dist/
+extension-browser/src/rules.generated.ts
+extension-browser/**/*.js
+extension-browser/**/*.js.map
+llm-slop-detector-browser-*.zip
 *.vsix
 .vscode-test/
 .claude/settings.local.json
