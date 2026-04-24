@@ -9,5 +9,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "exclude": ["node_modules", ".vscode-test", "test-fixtures", "web", "web-dist"]
+  "exclude": ["node_modules", ".vscode-test", "test-fixtures", "web", "web-dist", "extension-browser", "extension-browser-dist"]
 }
