@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.7.0...llm-slop-detector-v0.8.0) (2026-04-24)
+
+
+### Features
+
+* add model-family packs for Gemini, DeepSeek, Llama, Qwen, Grok ([#63](https://github.com/mandakan/llm-slop-detector/issues/63)) ([4a15b6f](https://github.com/mandakan/llm-slop-detector/commit/4a15b6f5304f7ae6ada263a2185a314c04d1bd75))
+* add web playground for browser-based slop detection ([#67](https://github.com/mandakan/llm-slop-detector/issues/67)) ([773b7b0](https://github.com/mandakan/llm-slop-detector/commit/773b7b0866fa7edeec42a307d7ef2e0a462dd17a))
+* browser extension (Chrome, Arc, Firefox) v1 ([#68](https://github.com/mandakan/llm-slop-detector/issues/68)) ([a640d80](https://github.com/mandakan/llm-slop-detector/commit/a640d80929b3cc112effd66c7720d333942761a0))
+* contenteditable support in the browser extension ([#73](https://github.com/mandakan/llm-slop-detector/issues/73)) ([f024c9f](https://github.com/mandakan/llm-slop-detector/commit/f024c9fe27b24760ec958aeb4068c2f98c2ca2ef))
+* inline overlay + fix-all + mark tooltips for browser extension ([#70](https://github.com/mandakan/llm-slop-detector/issues/70)) ([4b5e2d7](https://github.com/mandakan/llm-slop-detector/commit/4b5e2d744195a7549874d956f84bfd609d6cdf50))
+* read-only page scan mode for the browser extension ([#72](https://github.com/mandakan/llm-slop-detector/issues/72)) ([1e41e55](https://github.com/mandakan/llm-slop-detector/commit/1e41e55e539f4b618efe5b6fbb6a957cfb9e1cb8))
+
 ## [0.7.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.2...llm-slop-detector-v0.7.0) (2026-04-24)
 
 
