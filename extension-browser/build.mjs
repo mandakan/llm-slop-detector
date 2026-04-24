@@ -55,9 +55,15 @@ function copyStatic() {
   for (const f of ['action.html', 'options.html', 'popup.css', 'options.css']) {
     copyFileSync(join(srcDir, f), join(distDir, f));
   }
-  // Icon -- reuse the repo-root icon for v1
-  const iconSrc = join(repoRoot, 'icon.png');
-  if (existsSync(iconSrc)) copyFileSync(iconSrc, join(distDir, 'icon.png'));
+  // Icons at 16/32/48/128 for toolbar and store listings.
+  const iconsSrc = join(here, 'icons');
+  const iconsDist = join(distDir, 'icons');
+  if (existsSync(iconsSrc)) {
+    if (!existsSync(iconsDist)) mkdirSync(iconsDist, { recursive: true });
+    for (const f of readdirSync(iconsSrc)) {
+      if (f.endsWith('.png')) copyFileSync(join(iconsSrc, f), join(iconsDist, f));
+    }
+  }
 }
 
 async function run() {

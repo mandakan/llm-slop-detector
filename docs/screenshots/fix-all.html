@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fix-all demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --fg: #1f1f1f;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --bg: #fafafb;
+      --panel: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 48px 24px;
+      display: flex;
+      justify-content: center;
+    }
+    main {
+      width: 100%;
+      max-width: 920px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    textarea {
+      width: 100%;
+      min-height: 240px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+      resize: vertical;
+      background: #fff;
+      color: var(--fg);
+      outline: none;
+    }
+    textarea:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.12); }
+    .hint {
+      margin: 0 0 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <p class="hint">Open both, then click <strong>Fix all chars</strong> in the popover over the left panel to transform it into the right panel.</p>
+    <main>
+      <div class="card">
+        <h2>Before</h2>
+        <textarea spellcheck="false">It&#8217;s a truly &#8220;game-changing&#8221; framework &#8212; we&#8217;re going to delve into it&#8230;
+
+The invisible &#8203;zero-width&#8203; character is in this line. Plus an &nbsp;intrusive non-breaking space.
+
+We&#8217;ll leverage our robust platform &#8212; seamlessly.</textarea>
+      </div>
+      <div class="card">
+        <h2>After</h2>
+        <textarea spellcheck="false">It's a truly "game-changing" framework -- we're going to delve into it...
+
+The invisible zero-width character is in this line. Plus an intrusive non-breaking space.
+
+We'll leverage our robust platform -- seamlessly.</textarea>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
