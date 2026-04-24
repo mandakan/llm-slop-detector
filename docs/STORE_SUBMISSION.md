@@ -13,6 +13,34 @@ npm run package:browser
 
 Upload the same zip to all three stores.
 
+## Single-purpose description (1000 char max, Chrome)
+
+Chrome policy requires a single narrow purpose that every feature serves.
+
+```
+The extension has one purpose: identify and help the user clean up text
+that carries LLM-generation fingerprints -- invisible Unicode, AI-style
+punctuation (em dashes, curly quotes, ellipses), and a curated list of
+phrase patterns that large language models produce far more often than
+humans do (e.g. "delve", "tapestry of", "it's worth noting",
+"game-changing", "cutting-edge").
+
+Every feature serves that single purpose:
+
+- Inline marks surface flagged text in any editable field the user is
+  writing in (textarea, input, contenteditable). Hover or click the
+  mark to see the rule that fired.
+- A "Scan this page" button runs the same detector on the page's
+  visible text, so the user can evaluate content they're reading with
+  the same criteria they apply to their own drafts.
+- A fix-all action rewrites the flagged punctuation to plain-ASCII
+  equivalents -- a direct remediation of the same findings the
+  detector produced.
+
+All processing is local; the extension never transmits text off the
+user's device, never contacts any server, and ships no telemetry.
+```
+
 ## Short description (132 char max, Chrome)
 
 > Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type -- or in any page you're reading. Local only.
