@@ -28,6 +28,12 @@ npm run build:browser
 
 Toggle off globally (or per-site) via the extension's toolbar button. Pick rule packs in the options page.
 
+### Read-only page scan
+
+The toolbar popup also has a **Scan this page** button that highlights slop in any webpage you're reading -- a blog post, a Reddit thread, a LinkedIn update -- not just textareas. Findings are shown with a subtle wavy underline under the flagged word and a floating panel listing them in reading order, with click-to-jump and a clear-highlights button. The scan is a one-shot snapshot; re-click to rescan after the page changes.
+
+Turn this off in the options page if you only want to lint your own writing. The scan is explicit (never auto-runs), local-only (no network), and one-shot per click (no background observers).
+
 ### Known limitations (v1)
 
 - `contenteditable` editors (Gmail compose, Substack, Notion, LinkedIn) are not yet supported -- only `<textarea>` and `<input type=text>`. Inline marks only render over textareas.

@@ -47,6 +47,20 @@ label.toggle {
 }
 label.toggle input { margin: 0; }
 label.toggle strong { font-weight: 600; }
+section button#scan-page {
+  width: 100%;
+  font: inherit;
+  padding: 6px 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+section button#scan-page:hover { filter: brightness(0.95); }
+section button#scan-page:disabled { opacity: 0.5; cursor: not-allowed; }
+section .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 footer {
   display: flex;
   justify-content: space-between;
