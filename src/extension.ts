@@ -1,16 +1,53 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as fsp from 'fs/promises';
 import { LOCAL_RULES_FILENAME, RuleSet, loadRules, severityToVscode } from './rules';
-import { Language, scanText } from './core/scan';
+import { Language, offsetToLineCol, scanText } from './core/scan';
 import { SUPPORTED_CODE_LANGUAGES } from './core/comments';
 import { IgnoreMatcher, SLOPIGNORE_FILENAME, loadIgnoreMatcher } from './core/ignore';
-import { Finding } from './core/types';
+import { Finding, Severity } from './core/types';
 
 const SOURCE = 'LLM Slop';
 const DOCS_URI = vscode.Uri.parse('https://github.com/mandakan/llm-slop-detector#what-it-flags');
 const BASE_LANGS: Language[] = ['markdown', 'plaintext'];
 let SUPPORTED_LANGS = new Set<Language>(BASE_LANGS);
 const CODE_ACTION_SELECTORS: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
+
+// File-extension to language mapping for closed files. Mirrors the CLI; the
+// extension uses VS Code's language IDs for open documents but needs an
+// extension-based fallback for the workspace scan, which reads files off disk.
+const PROSE_EXTENSIONS: ReadonlyMap<string, Language> = new Map([
+  ['.md', 'markdown'],
+  ['.markdown', 'markdown'],
+  ['.mdown', 'markdown'],
+  ['.txt', 'plaintext'],
+  ['.text', 'plaintext'],
+]);
+
+const CODE_EXTENSIONS: ReadonlyMap<string, Language> = new Map([
+  ['.ts', 'typescript'], ['.mts', 'typescript'], ['.cts', 'typescript'],
+  ['.tsx', 'typescriptreact'],
+  ['.js', 'javascript'], ['.mjs', 'javascript'], ['.cjs', 'javascript'],
+  ['.jsx', 'javascriptreact'],
+  ['.py', 'python'],
+  ['.rs', 'rust'],
+  ['.go', 'go'],
+  ['.java', 'java'],
+  ['.cs', 'csharp'],
+  ['.cpp', 'cpp'], ['.cxx', 'cpp'], ['.cc', 'cpp'], ['.hpp', 'cpp'], ['.hxx', 'cpp'],
+  ['.c', 'c'], ['.h', 'c'],
+  ['.rb', 'ruby'],
+  ['.php', 'php'],
+  ['.sh', 'shellscript'], ['.bash', 'shellscript'], ['.zsh', 'shellscript'],
+  ['.swift', 'swift'],
+  ['.kt', 'kotlin'], ['.kts', 'kotlin'],
+  ['.scala', 'scala'], ['.sc', 'scala'],
+  ['.dart', 'dart'],
+  ['.pl', 'perl'], ['.pm', 'perl'],
+  ['.r', 'r'],
+  ['.yaml', 'yaml'], ['.yml', 'yaml'],
+]);
 
 function rebuildSupportedLangs() {
   const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
@@ -357,6 +394,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('llmSlopDetector.showOnboarding', () => showOnboarding(context)),
     vscode.commands.registerCommand('llmSlopDetector.scanSelection', () => scanSelection()),
+    vscode.commands.registerCommand('llmSlopDetector.scanWorkspace', () => scanWorkspace()),
     vscode.commands.registerCommand('llmSlopDetector.showRuleSources', async () => {
       if (RULES.sources.length === 0) {
         vscode.window.showInformationMessage('LLM Slop Detector: no rule sources loaded.');
@@ -441,6 +479,197 @@ async function scanSelection(): Promise<void> {
     editor.revealRange(pick.diagnostic.range, vscode.TextEditorRevealType.InCenter);
     editor.selection = new vscode.Selection(pick.diagnostic.range.start, pick.diagnostic.range.end);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Scan workspace
+// ---------------------------------------------------------------------------
+
+type WorkspaceHit = {
+  uri: vscode.Uri;
+  relPath: string;
+  finding: Finding;
+  displayLine: number;
+  displayCol: number;
+};
+
+function buildScanExtensionMap(): Map<string, Language> {
+  const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+  const out = new Map<string, Language>(PROSE_EXTENSIONS);
+  if (cfg.get<boolean>('scanCodeComments', false)) {
+    const allowed = new Set(SUPPORTED_CODE_LANGUAGES);
+    const enabled = new Set(cfg.get<string[]>('codeCommentLanguages', []).filter(l => allowed.has(l)));
+    for (const [ext, lang] of CODE_EXTENSIONS) {
+      if (enabled.has(lang)) out.set(ext, lang);
+    }
+  }
+  return out;
+}
+
+function walkWorkspaceFolder(
+  rootDir: string,
+  currentDir: string,
+  extensions: ReadonlyMap<string, Language>,
+  ignore: IgnoreMatcher | undefined,
+  push: (absPath: string, lang: Language) => void,
+  token: vscode.CancellationToken,
+): void {
+  if (token.isCancellationRequested) return;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (token.isCancellationRequested) return;
+    // Same hard-coded skips as the CLI walker: dotfiles, node_modules, build out.
+    if (e.name.startsWith('.') || e.name === 'node_modules' || e.name === 'out') continue;
+    const full = path.join(currentDir, e.name);
+    const rel = path.relative(rootDir, full);
+    if (e.isDirectory()) {
+      if (ignore && ignore.patterns.length > 0 && ignore.ignores(rel, true)) continue;
+      walkWorkspaceFolder(rootDir, full, extensions, ignore, push, token);
+    } else if (e.isFile()) {
+      const lang = extensions.get(path.extname(e.name).toLowerCase());
+      if (lang === undefined) continue;
+      if (ignore && ignore.patterns.length > 0 && ignore.ignores(rel, false)) continue;
+      push(full, lang);
+    }
+  }
+}
+
+async function scanWorkspace(): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (folders.length === 0) {
+    vscode.window.showInformationMessage('LLM Slop Detector: open a folder to scan the workspace.');
+    return;
+  }
+  const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+  if (!cfg.get<boolean>('enabled', true)) {
+    vscode.window.showInformationMessage('LLM Slop Detector is disabled. Enable it before scanning.');
+    return;
+  }
+
+  const extensions = buildScanExtensionMap();
+
+  type Target = { absPath: string; uri: vscode.Uri; lang: Language; relPath: string };
+
+  const hits = await vscode.window.withProgress<WorkspaceHit[] | undefined>({
+    location: vscode.ProgressLocation.Notification,
+    title: 'LLM Slop Detector: scanning workspace',
+    cancellable: true,
+  }, async (progress, token) => {
+    const targets: Target[] = [];
+    for (const folder of folders) {
+      if (token.isCancellationRequested) return undefined;
+      const matcher = IGNORE_BY_FOLDER.get(folder.uri.fsPath);
+      walkWorkspaceFolder(folder.uri.fsPath, folder.uri.fsPath, extensions, matcher, (absPath, lang) => {
+        targets.push({
+          absPath,
+          uri: vscode.Uri.file(absPath),
+          lang,
+          relPath: path.relative(folder.uri.fsPath, absPath),
+        });
+      }, token);
+    }
+    if (token.isCancellationRequested) return undefined;
+    if (targets.length === 0) return [];
+
+    // Use the in-memory text of any open document so unsaved changes are
+    // reflected in the scan, falling back to the on-disk version otherwise.
+    const openText = new Map<string, string>();
+    for (const d of vscode.workspace.textDocuments) {
+      if (d.uri.scheme === 'file') openText.set(d.uri.fsPath, d.getText());
+    }
+
+    progress.report({ message: `${targets.length} file${targets.length === 1 ? '' : 's'}` });
+
+    const out: WorkspaceHit[] = [];
+    let next = 0;
+    let done = 0;
+    const total = targets.length;
+    const concurrency = Math.min(8, total);
+
+    await Promise.all(Array.from({ length: concurrency }, async () => {
+      while (next < total) {
+        if (token.isCancellationRequested) return;
+        const t = targets[next++];
+        let text: string;
+        const open = openText.get(t.absPath);
+        if (open !== undefined) {
+          text = open;
+        } else {
+          try {
+            text = await fsp.readFile(t.absPath, 'utf8');
+          } catch {
+            done++;
+            continue;
+          }
+        }
+        const findings = scanText(text, RULES, t.lang);
+        for (const f of findings) {
+          const lc = offsetToLineCol(text, f.offset);
+          out.push({ uri: t.uri, relPath: t.relPath, finding: f, displayLine: lc.line, displayCol: lc.col });
+        }
+        done++;
+        if (done === total || done % 25 === 0) {
+          progress.report({ message: `${done}/${total} scanned, ${out.length} finding${out.length === 1 ? '' : 's'}` });
+        }
+      }
+    }));
+
+    if (token.isCancellationRequested) return undefined;
+    return out;
+  });
+
+  if (hits === undefined) return;
+  if (hits.length === 0) {
+    vscode.window.showInformationMessage('LLM Slop Detector: no findings in the workspace.');
+    return;
+  }
+
+  hits.sort((a, b) => {
+    const cmp = a.relPath.localeCompare(b.relPath);
+    if (cmp !== 0) return cmp;
+    return a.finding.offset - b.finding.offset;
+  });
+
+  const counts: Record<Severity, number> = { error: 0, warning: 0, information: 0, hint: 0 };
+  const fileSet = new Set<string>();
+  for (const h of hits) {
+    counts[h.finding.severity]++;
+    fileSet.add(h.relPath);
+  }
+  const summaryParts: string[] = [];
+  if (counts.error) summaryParts.push(`${counts.error} error${counts.error === 1 ? '' : 's'}`);
+  if (counts.warning) summaryParts.push(`${counts.warning} warning${counts.warning === 1 ? '' : 's'}`);
+  if (counts.information) summaryParts.push(`${counts.information} info`);
+  if (counts.hint) summaryParts.push(`${counts.hint} hint${counts.hint === 1 ? '' : 's'}`);
+  const summary = `${hits.length} finding${hits.length === 1 ? '' : 's'} in ${fileSet.size} file${fileSet.size === 1 ? '' : 's'} (${summaryParts.join(', ')})`;
+
+  type Item = vscode.QuickPickItem & { hit: WorkspaceHit };
+  const items: Item[] = hits.map(h => ({
+    label: `$(${severityCodicon(severityToVscode(h.finding.severity))}) ${h.finding.matchText.trim() || h.finding.code}`,
+    description: `${h.relPath}:${h.displayLine}:${h.displayCol}`,
+    detail: h.finding.message,
+    hit: h,
+  }));
+
+  const pick = await vscode.window.showQuickPick(items, {
+    title: summary,
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!pick) return;
+
+  const doc = await vscode.workspace.openTextDocument(pick.hit.uri);
+  const editor = await vscode.window.showTextDocument(doc);
+  const start = doc.positionAt(pick.hit.finding.offset);
+  const end = doc.positionAt(pick.hit.finding.offset + pick.hit.finding.length);
+  const range = new vscode.Range(start, end);
+  editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  editor.selection = new vscode.Selection(range.start, range.end);
 }
 
 // ---------------------------------------------------------------------------

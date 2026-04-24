@@ -1,0 +1,6 @@
+Plaintext fixture with invisible Unicode.
+
+This sentence contains a non breaking space between "non" and "breaking".
+And this one has a zero​width space hidden inside "zerowidth".
+
+Nothing else on this line should trip the detector.
