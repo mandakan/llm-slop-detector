@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.2...llm-slop-detector-v0.7.0) (2026-04-24)
+
+
+### Features
+
+* mark files with slop in the explorer ([#62](https://github.com/mandakan/llm-slop-detector/issues/62)) ([ff4e240](https://github.com/mandakan/llm-slop-detector/commit/ff4e2402a1aee52032061b922214756586cd0b01))
+* publish releases to Open VSX Registry ([#60](https://github.com/mandakan/llm-slop-detector/issues/60)) ([b572f87](https://github.com/mandakan/llm-slop-detector/commit/b572f8770139f773e19f9038ef377016cd64a4a4))
+
 ## [0.6.2](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.1...llm-slop-detector-v0.6.2) (2026-04-24)
 
 
