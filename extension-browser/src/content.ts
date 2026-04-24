@@ -879,29 +879,39 @@ function syncMirrorScroll(state: EditorState) {
 
 function renderMirror(state: EditorState) {
   if (!state.mirror) return;
-  state.mirror.innerHTML = renderHighlightedHTML(state.lastText, state.lastFindings);
-  // scrollHeight only becomes correct after innerHTML updates.
+  // Build a fresh DOM tree rather than writing innerHTML. Avoids any chance
+  // of HTML-injection from user text even if an escape helper regresses,
+  // and quiets AMO's static-analysis warning about innerHTML interpolation.
+  const mirror = state.mirror;
+  while (mirror.firstChild) mirror.removeChild(mirror.firstChild);
+  appendHighlightedNodes(mirror, state.lastText, state.lastFindings);
+  // scrollHeight only becomes correct after the mirror's contents update.
   syncMirrorScroll(state);
 }
 
-function renderHighlightedHTML(text: string, findings: Finding[]): string {
-  // The mirror needs a trailing newline sentinel because a textarea's final
-  // visual line (when text ends with \n) has height; a div's doesn't unless
-  // followed by a non-empty character.
+function appendHighlightedNodes(target: HTMLElement, text: string, findings: Finding[]): void {
+  // Mirror needs a trailing space sentinel when the text ends in \n so the
+  // final visual line has the same height in a div as in a textarea.
   const sentinel = text.endsWith('\n') ? ' ' : '';
-  if (findings.length === 0) return escapeText(text) + sentinel;
+  if (findings.length === 0) {
+    target.appendChild(document.createTextNode(text + sentinel));
+    return;
+  }
 
   const sorted = [...findings].sort((a, b) => a.offset - b.offset);
-  const parts: string[] = [];
   let cursor = 0;
   for (const f of sorted) {
     if (f.offset < cursor) continue; // skip overlaps
-    if (f.offset > cursor) parts.push(escapeText(text.slice(cursor, f.offset)));
-    parts.push(renderMarkFragments(f));
+    if (f.offset > cursor) {
+      target.appendChild(document.createTextNode(text.slice(cursor, f.offset)));
+    }
+    appendMarkFragments(target, f);
     cursor = f.offset + f.length;
   }
-  if (cursor < text.length) parts.push(escapeText(text.slice(cursor)));
-  return parts.join('') + sentinel;
+  if (cursor < text.length) {
+    target.appendChild(document.createTextNode(text.slice(cursor)));
+  }
+  if (sentinel) target.appendChild(document.createTextNode(sentinel));
 }
 
 // A multi-word match wrapped in a single span paints the inline background
@@ -914,28 +924,31 @@ function renderHighlightedHTML(text: string, findings: Finding[]): string {
 // the overlay itself stays pointer-events: none so native text-selection
 // gestures on the textarea are preserved. A document-level mousemove/click
 // handler does hit-testing against mark rects for tooltips and click-to-jump.
-function renderMarkFragments(f: Finding): string {
+function appendMarkFragments(target: HTMLElement, f: Finding): void {
   const text = f.matchText;
-  if (text.length === 0) return '';
-  const sev = escapeAttr(f.severity);
-  const off = String(f.offset);
-  const msg = escapeAttr(f.message);
-  const attrs = `class="lsd-mark lsd-sev-${sev}" data-lsd-offset="${off}" data-lsd-message="${msg}"`;
-  const parts: string[] = [];
+  if (text.length === 0) return;
   const wsRe = /\s+/g;
   let cursor = 0;
   let m: RegExpExecArray | null;
   while ((m = wsRe.exec(text)) !== null) {
     if (m.index > cursor) {
-      parts.push(`<span ${attrs}>${escapeText(text.slice(cursor, m.index))}</span>`);
+      target.appendChild(createMarkSpan(text.slice(cursor, m.index), f));
     }
-    parts.push(escapeText(m[0]));
+    target.appendChild(document.createTextNode(m[0]));
     cursor = m.index + m[0].length;
   }
   if (cursor < text.length) {
-    parts.push(`<span ${attrs}>${escapeText(text.slice(cursor))}</span>`);
+    target.appendChild(createMarkSpan(text.slice(cursor), f));
   }
-  return parts.join('');
+}
+
+function createMarkSpan(text: string, f: Finding): HTMLElement {
+  const span = document.createElement('span');
+  span.className = `lsd-mark lsd-sev-${f.severity}`;
+  span.setAttribute('data-lsd-offset', String(f.offset));
+  span.setAttribute('data-lsd-message', f.message);
+  span.textContent = text;
+  return span;
 }
 
 // ---------------------------------------------------------------------------
@@ -956,22 +969,38 @@ function openPopover(state: EditorState) {
   closePopover();
   const pop = document.createElement('div');
   pop.className = `${HOST_CLASS} ${POPOVER_CLASS}`;
-  pop.innerHTML = `
-    <div class="lsd-pop-head">
-      <span class="lsd-pop-title">LLM Slop Detector</span>
-      <button class="lsd-pop-close" type="button" aria-label="Close">x</button>
-    </div>
-    <div class="lsd-pop-toolbar" hidden>
-      <button class="lsd-fix-all" type="button">Fix all chars</button>
-    </div>
-    <div class="lsd-pop-body"></div>
-  `;
+
+  const head = document.createElement('div');
+  head.className = 'lsd-pop-head';
+  const title = document.createElement('span');
+  title.className = 'lsd-pop-title';
+  title.textContent = 'LLM Slop Detector';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'lsd-pop-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = 'x';
+  head.append(title, closeBtn);
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'lsd-pop-toolbar';
+  toolbar.hidden = true;
+  const fixAllBtn = document.createElement('button');
+  fixAllBtn.className = 'lsd-fix-all';
+  fixAllBtn.type = 'button';
+  fixAllBtn.textContent = 'Fix all chars';
+  toolbar.appendChild(fixAllBtn);
+
+  const body = document.createElement('div');
+  body.className = 'lsd-pop-body';
+
+  pop.append(head, toolbar, body);
   document.body.appendChild(pop);
   popover = pop;
   activeEditorEl = state.editor;
 
-  pop.querySelector('.lsd-pop-close')!.addEventListener('click', closePopover);
-  pop.querySelector('.lsd-fix-all')!.addEventListener('click', () => applyAllCharFixes(state));
+  closeBtn.addEventListener('click', closePopover);
+  fixAllBtn.addEventListener('click', () => applyAllCharFixes(state));
   pop.addEventListener('click', e => e.stopPropagation());
   document.addEventListener('click', onOutsideClick, { capture: true });
   document.addEventListener('keydown', onEscape);
@@ -1033,25 +1062,40 @@ function renderPopover(state: EditorState) {
   const fixAllBtn = toolbar.querySelector('.lsd-fix-all') as HTMLButtonElement;
   fixAllBtn.textContent = fixableCount > 1 ? `Fix all ${fixableCount} chars` : 'Fix char';
 
+  // Clear prior contents without innerHTML, then rebuild.
+  while (body.firstChild) body.removeChild(body.firstChild);
+
   if (findings.length === 0) {
-    body.innerHTML = '<div class="lsd-empty">No slop detected.</div>';
+    const empty = document.createElement('div');
+    empty.className = 'lsd-empty';
+    empty.textContent = 'No slop detected.';
+    body.appendChild(empty);
     return;
   }
   const sorted = [...findings].sort((a, b) => a.offset - b.offset);
-  body.innerHTML = '';
   for (const f of sorted) {
     const item = document.createElement('div');
     item.className = `lsd-item lsd-sev-${f.severity}`;
     item.setAttribute('data-lsd-offset', String(f.offset));
     const def = f.code === 'char' ? rules.chars.get(f.matchText) : undefined;
     const hasFix = def?.replacement !== undefined;
-    item.innerHTML = `
-      <div class="lsd-item-head">
-        <span class="lsd-badge-sev lsd-sev-${escapeAttr(f.severity)}">${escapeText(f.severity)}</span>
-        <code class="lsd-match">${escapeText(f.matchText || '(empty)')}</code>
-      </div>
-      <div class="lsd-msg">${escapeText(f.message)}</div>
-    `;
+
+    const itemHead = document.createElement('div');
+    itemHead.className = 'lsd-item-head';
+    const sevBadge = document.createElement('span');
+    sevBadge.className = `lsd-badge-sev lsd-sev-${f.severity}`;
+    sevBadge.textContent = f.severity;
+    const match = document.createElement('code');
+    match.className = 'lsd-match';
+    match.textContent = f.matchText || '(empty)';
+    itemHead.append(sevBadge, match);
+
+    const msg = document.createElement('div');
+    msg.className = 'lsd-msg';
+    msg.textContent = f.message;
+
+    item.append(itemHead, msg);
+
     if (hasFix) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -1734,58 +1778,101 @@ function clearPageScan() {
 function renderResultsPanel(capHit: boolean, bytesScanned: number) {
   const panel = document.createElement('div');
   panel.className = `${HOST_CLASS} ${RD_PANEL_CLASS}`;
-  panel.innerHTML = `
-    <div class="lsd-rd-head">
-      <span class="lsd-rd-title">Page scan</span>
-      <button class="lsd-rd-close" type="button" aria-label="Close">x</button>
-    </div>
-    <div class="lsd-rd-summary"></div>
-    <div class="lsd-rd-list"></div>
-    <div class="lsd-rd-actions">
-      <button class="lsd-rd-clear" type="button">Clear highlights</button>
-    </div>
-  `;
+
+  const head = document.createElement('div');
+  head.className = 'lsd-rd-head';
+  const title = document.createElement('span');
+  title.className = 'lsd-rd-title';
+  title.textContent = 'Page scan';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'lsd-rd-close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = 'x';
+  head.append(title, closeBtn);
+
+  const summary = document.createElement('div');
+  summary.className = 'lsd-rd-summary';
+
+  const list = document.createElement('div');
+  list.className = 'lsd-rd-list';
+
+  const actions = document.createElement('div');
+  actions.className = 'lsd-rd-actions';
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'lsd-rd-clear';
+  clearBtn.type = 'button';
+  clearBtn.textContent = 'Clear highlights';
+  actions.appendChild(clearBtn);
+
+  panel.append(head, summary, list, actions);
   document.body.appendChild(panel);
   rdPanel = panel;
 
   const counts: Record<Severity, number> = { error: 0, warning: 0, information: 0, hint: 0 };
   for (const rf of rdFindings) counts[rf.finding.severity]++;
-
-  const summary = panel.querySelector('.lsd-rd-summary') as HTMLElement;
   const total = rdFindings.length;
-  const sevBits = (['error', 'warning', 'information', 'hint'] as Severity[])
-    .filter(s => counts[s] > 0)
-    .map(s => `<span class="lsd-rd-sev lsd-sev-${s}">${counts[s]} ${s}</span>`)
-    .join(' ');
-  const capBit = capHit
-    ? `<div class="lsd-rd-cap">Page exceeded ${RD_TOTAL_CAP / 1024} KB -- scanned first ${Math.round(bytesScanned / 1024)} KB.</div>`
-    : '';
-  summary.innerHTML = total === 0
-    ? '<div class="lsd-rd-empty">No slop detected on this page.</div>'
-    : `<div class="lsd-rd-counts"><strong>${total}</strong> finding${total === 1 ? '' : 's'}</div><div class="lsd-rd-sevbits">${sevBits}</div>${capBit}`;
 
-  const list = panel.querySelector('.lsd-rd-list') as HTMLElement;
+  if (total === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'lsd-rd-empty';
+    empty.textContent = 'No slop detected on this page.';
+    summary.appendChild(empty);
+  } else {
+    const countsRow = document.createElement('div');
+    countsRow.className = 'lsd-rd-counts';
+    const countStrong = document.createElement('strong');
+    countStrong.textContent = String(total);
+    countsRow.append(countStrong, document.createTextNode(` finding${total === 1 ? '' : 's'}`));
+    summary.appendChild(countsRow);
+
+    const sevbitsRow = document.createElement('div');
+    sevbitsRow.className = 'lsd-rd-sevbits';
+    for (const s of ['error', 'warning', 'information', 'hint'] as Severity[]) {
+      if (counts[s] === 0) continue;
+      const bit = document.createElement('span');
+      bit.className = `lsd-rd-sev lsd-sev-${s}`;
+      bit.textContent = `${counts[s]} ${s}`;
+      sevbitsRow.appendChild(bit);
+    }
+    summary.appendChild(sevbitsRow);
+
+    if (capHit) {
+      const cap = document.createElement('div');
+      cap.className = 'lsd-rd-cap';
+      cap.textContent = `Page exceeded ${RD_TOTAL_CAP / 1024} KB -- scanned first ${Math.round(bytesScanned / 1024)} KB.`;
+      summary.appendChild(cap);
+    }
+  }
+
   for (const rf of rdFindings) {
     const row = document.createElement('div');
     row.className = `lsd-rd-item lsd-sev-${rf.finding.severity}`;
-    row.innerHTML = `
-      <div class="lsd-rd-item-head">
-        <span class="lsd-badge-sev lsd-sev-${escapeAttr(rf.finding.severity)}">${escapeText(rf.finding.severity)}</span>
-        <code class="lsd-match">${escapeText(rf.finding.matchText || '(empty)')}</code>
-      </div>
-      <div class="lsd-msg">${escapeText(rf.finding.message)}</div>
-    `;
+
+    const itemHead = document.createElement('div');
+    itemHead.className = 'lsd-rd-item-head';
+    const sevBadge = document.createElement('span');
+    sevBadge.className = `lsd-badge-sev lsd-sev-${rf.finding.severity}`;
+    sevBadge.textContent = rf.finding.severity;
+    const match = document.createElement('code');
+    match.className = 'lsd-match';
+    match.textContent = rf.finding.matchText || '(empty)';
+    itemHead.append(sevBadge, match);
+
+    const msg = document.createElement('div');
+    msg.className = 'lsd-msg';
+    msg.textContent = rf.finding.message;
+
+    row.append(itemHead, msg);
     row.addEventListener('click', () => jumpToRdFinding(rf));
     list.appendChild(row);
   }
 
-  (panel.querySelector('.lsd-rd-close') as HTMLElement).addEventListener('click', () => {
+  closeBtn.addEventListener('click', () => {
     panel.remove();
     rdPanel = null;
   });
-  (panel.querySelector('.lsd-rd-clear') as HTMLElement).addEventListener('click', () => {
-    clearPageScan();
-  });
+  clearBtn.addEventListener('click', () => clearPageScan());
 }
 
 function jumpToRdFinding(rf: RdFinding) {
@@ -1794,19 +1881,6 @@ function jumpToRdFinding(rf: RdFinding) {
   void rf.element.offsetWidth;
   rf.element.classList.add('lsd-pulse');
   window.setTimeout(() => rf.element.classList.remove('lsd-pulse'), 1500);
-}
-
-function escapeText(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function escapeAttr(s: string): string {
-  return escapeText(s);
 }
 
 // Marker so you can verify the content script is running in any given frame
