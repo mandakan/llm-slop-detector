@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.6.0...llm-slop-detector-v0.6.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* publish to npm from release workflow via OIDC ([#56](https://github.com/mandakan/llm-slop-detector/issues/56)) ([f249939](https://github.com/mandakan/llm-slop-detector/commit/f24993950227a7b1ee9a2a9af48591f4235e2cf0))
+
 ## [0.6.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.5.0...llm-slop-detector-v0.6.0) (2026-04-24)
 
 
