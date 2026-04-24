@@ -38,6 +38,8 @@ Diagnostics show which rule source flagged a match (`[built-in]`, `[your-list-na
 
 ## Quick fixes
 
+![Quick Fix menu with per-character replacements and a "Fix all" action](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/quick-fix.png)
+
 Most flagged characters have deterministic fixes available via the lightbulb menu (`Cmd/Ctrl+.`):
 
 - zero-width, BOM, joiners: delete
@@ -108,6 +110,8 @@ Em dashes allowed on this line -- but curly "quotes" still flag.
 The `phrase:` value must match the rule's `pattern` field exactly (the literal regex string from the rule file, not the matched text). The `char:` value can be the literal character or a `U+XXXX` codepoint. Directives inside fenced or inline code are ignored, so README examples like this one don't accidentally silence the whole file.
 
 ## Source code comments (opt-in)
+
+![JSDoc and line comments in a TypeScript file flagged for LLM slop while code and strings stay clean](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/code-comments.png)
 
 LLM slop frequently turns up in JSDoc, Python docstrings, Rust `///` blocks, and `//` comments. Turn on `llmSlopDetector.scanCodeComments` to scan those ranges too:
 
@@ -273,6 +277,8 @@ The same rule engine ships as a CLI, useful for pre-commit hooks and CI. It prod
 ```bash
 llm-slop [options] <paths...>
 ```
+
+![Terminal output from llm-slop --scan-comments showing 15 findings with colored severity](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/cli.png)
 
 Paths may be files or directories. Directories are walked recursively; files with extensions `.md`, `.markdown`, `.mdown`, `.txt`, or `.text` are scanned. `node_modules`, `out`, and dot-prefixed entries are skipped.
 
