@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Compose a message</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --fg: #1f1f1f;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --bg: #fafafb;
+      --panel: #ffffff;
+      --primary: #1a73e8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 48px 24px;
+      display: flex;
+      justify-content: center;
+    }
+    .compose {
+      width: 100%;
+      max-width: 720px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .compose-header {
+      padding: 12px 18px;
+      background: #f2f3f5;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .compose-meta {
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compose-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .compose-row:last-of-type { border-bottom: none; }
+    .compose-row label {
+      color: var(--muted);
+      font-size: 13px;
+      width: 48px;
+    }
+    .compose-row input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font: inherit;
+      color: var(--fg);
+      padding: 4px 0;
+      background: transparent;
+    }
+    .compose-body {
+      min-height: 260px;
+      padding: 18px;
+      font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--fg);
+      outline: none;
+    }
+    .compose-body p { margin: 0 0 0.9em; }
+    .compose-body p:last-child { margin-bottom: 0; }
+    .compose-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 18px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: #1967d2; }
+    .btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 6px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .btn-icon:hover { background: #f1f3f4; }
+  </style>
+</head>
+<body>
+  <main class="compose" aria-label="Compose a message">
+    <header class="compose-header">New message</header>
+    <section class="compose-meta">
+      <div class="compose-row"><label>To</label><input type="text" value="team@example.com"></div>
+      <div class="compose-row"><label>Subject</label><input value="Q3 roadmap -- a truly game-changing update"></div>
+    </section>
+    <div class="compose-body" contenteditable="true" aria-label="Message body"><p>Hi team,</p>
+<p>I wanted to delve into our game-changing Q3 roadmap. We'll leverage our robust framework to unlock seamless synergy across the organisation.</p>
+<p>Ultimately, this tapestry of cutting-edge capabilities will empower every team to navigate the multifaceted landscape ahead of us.</p>
+<p>It's worth noting that this is a paradigm shift -- truly state-of-the-art.</p>
+<p>Thanks,<br>Alex</p></div>
+    <footer class="compose-footer">
+      <button class="btn-primary" type="button">Send</button>
+      <button class="btn-icon" type="button" aria-label="Attach">&#128206;</button>
+      <button class="btn-icon" type="button" aria-label="Emoji">&#128522;</button>
+      <button class="btn-icon" type="button" aria-label="More options">&#8942;</button>
+    </footer>
+  </main>
+</body>
+</html>

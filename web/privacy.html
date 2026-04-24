@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LLM Slop Detector -- Privacy Policy</title>
+  <meta name="description" content="Privacy policy for the LLM Slop Detector extension, CLI, web playground, and VS Code extension. No network calls, no telemetry, no data collection.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Privacy Policy</h1>
+    <p class="tagline"><a href="./">&larr; back to the playground</a></p>
+  </header>
+
+  <main style="grid-template-columns: minmax(0, 1fr);">
+    <section>
+      <p>The <strong>LLM Slop Detector</strong> browser extension, web playground, CLI, and VS Code extension make the same four privacy commitments. They all run the same rule engine; they all handle text locally.</p>
+
+      <ol>
+        <li><strong>No network requests.</strong> The extension makes no HTTP requests for any user-driven operation. Rule data is bundled at build time and ships inside the extension zip/vsix.</li>
+        <li><strong>No telemetry, analytics, error reporting, or usage logging.</strong> Nothing about what you scan, when, how often, or with which settings is sent to the developer or to any third party.</li>
+        <li><strong>User preferences</strong> (enabled packs, per-site toggles, read-only mode setting) are stored via <code>chrome.storage.local</code> and never leave your device. <code>storage.sync</code> is deliberately not used, so your per-site disables don't fan out to other devices.</li>
+        <li><strong>Your text stays yours.</strong> Text you write, paste, read, or scan is processed entirely in the extension's sandboxed JavaScript context and discarded as soon as the scan produces findings. It is never transmitted, persisted, or logged.</li>
+      </ol>
+
+      <h2>What permissions does the extension ask for, and why?</h2>
+      <ul>
+        <li><code>storage</code> -- to save your preferences locally. No use of <code>storage.sync</code>.</li>
+        <li><code>host_permissions</code> for <code>http://*/*</code> and <code>https://*/*</code> -- so the content script can inject into any webpage where you might write. The script only reads editor contents; it doesn't send them anywhere.</li>
+      </ul>
+
+      <h2>Source code</h2>
+      <p>Everything is MIT-licensed and reviewable at <a href="https://github.com/mandakan/llm-slop-detector" rel="noopener">github.com/mandakan/llm-slop-detector</a>. The scanning logic is in <code>src/core/</code>; you can grep for <code>fetch</code>, <code>XMLHttpRequest</code>, or <code>WebSocket</code> and confirm the extension doesn't call any of them.</p>
+
+      <h2>Contact</h2>
+      <p>Open an issue at <a href="https://github.com/mandakan/llm-slop-detector/issues" rel="noopener">github.com/mandakan/llm-slop-detector/issues</a> or email the publisher at <a href="mailto:m@thias.se">m@thias.se</a>.</p>
+
+      <h2>Changes to this policy</h2>
+      <p>If this policy ever changes, the new text will live at this same URL and the previous text will remain accessible in the repository's git history. The privacy commitments themselves are not expected to change.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      <a href="./" rel="noopener">Playground</a> &middot;
+      <a href="https://github.com/mandakan/llm-slop-detector" rel="noopener">GitHub</a> &middot;
+      <a href="https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector" rel="noopener">VS Code Marketplace</a>
+    </p>
+  </footer>
+</body>
+</html>
