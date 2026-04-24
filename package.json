@@ -45,7 +45,8 @@
   ],
   "main": "./out/extension.js",
   "bin": {
-    "llm-slop": "./out/cli.js"
+    "llm-slop": "./out/cli.js",
+    "llm-slop-mcp": "./out/mcp.js"
   },
   "capabilities": {
     "untrustedWorkspaces": {
@@ -113,7 +114,13 @@
           "default": {},
           "additionalProperties": {
             "type": "string",
-            "enum": ["error", "warning", "information", "hint", "off"]
+            "enum": [
+              "error",
+              "warning",
+              "information",
+              "hint",
+              "off"
+            ]
           },
           "description": "Override severity for specific rules, packs, or sources. Selector keys: pack:<name> (e.g. pack:academic), phrase:<exact-pattern>, char:<literal> or char:U+XXXX, source:<name>. Values: error | warning | information | hint | off (off disables the rule entirely). Precedence: phrase/char > pack > source -- most specific wins. Example: {\"pack:academic\": \"hint\", \"phrase:\\\\bdelve(s|d|ing)?\\\\b\": \"off\"}."
         },
@@ -170,7 +177,10 @@
     },
     "jsonValidation": [
       {
-        "fileMatch": [".llmsloprc.json", ".llmsloprc.jsonc"],
+        "fileMatch": [
+          ".llmsloprc.json",
+          ".llmsloprc.jsonc"
+        ],
         "url": "./schemas/llmsloprc.schema.json"
       }
     ],
@@ -198,7 +208,7 @@
     ]
   },
   "scripts": {
-    "compile": "tsc -p ./ && chmod +x out/cli.js",
+    "compile": "tsc -p ./ && chmod +x out/cli.js out/mcp.js",
     "watch": "tsc -watch -p ./",
     "package": "npx --yes @vscode/vsce package",
     "slop": "node ./out/cli.js"
@@ -207,5 +217,8 @@
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.95.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

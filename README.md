@@ -355,6 +355,30 @@ The SARIF output plugs into code-scanning:
     sarif_file: slop.sarif
 ```
 
+## Use from Claude / MCP
+
+The same rule engine also ships as a stdio [MCP](https://modelcontextprotocol.io) server, so an agent can scan its own output before writing it to disk. Findings are identical to the CLI for the same input and config.
+
+Configure your MCP client (Claude Code, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "llm-slop": {
+      "command": "npx",
+      "args": ["-y", "llm-slop-detector", "llm-slop-mcp"]
+    }
+  }
+}
+```
+
+Pass `--pack`, `--no-builtin`, or `--config` as extra `args`, or set `LLM_SLOP_PACKS`, `LLM_SLOP_NO_BUILTIN`, or `LLM_SLOP_CONFIG` in `env` to match your CLI setup.
+
+Tools exposed:
+
+- `scan_text` -- `{ text, language?, packs? }` returns an array of findings with `line`, `col`, `endLine`, `endCol`, `code`, `severity`, `message`, `source`, `rulePattern`. `language` defaults to `markdown`; use `plaintext` to scan everything, or a code language id (e.g. `typescript`) to scan only comments. `packs` overrides the server's startup packs for one call.
+- `list_rules` -- `{ source? }` returns loaded sources with rule counts, plus the full char and phrase rule lists, optionally filtered by source name.
+
 ## Install
 
 ### From the VS Code Marketplace
