@@ -141,7 +141,10 @@ function teardownEditors() {
 // ---------------------------------------------------------------------------
 
 const TEXT_CONTROL_SELECTOR = 'textarea, input[type=text]';
-const CE_SELECTOR = '[contenteditable="true"], [contenteditable=""]';
+// [role="textbox"] with aria-multiline catches rich editors like Gmail's
+// compose body that set the contenteditable attribute dynamically (or via
+// designMode on a nested document).
+const CE_SELECTOR = '[contenteditable="true"], [contenteditable=""], [role="textbox"][aria-multiline="true"]';
 const ALL_EDITOR_SELECTOR = `${TEXT_CONTROL_SELECTOR}, ${CE_SELECTOR}`;
 
 function attachAny(el: HTMLElement) {
@@ -159,17 +162,36 @@ function scanDocument() {
 function observeMutations() {
   const mo = new MutationObserver(mutations => {
     for (const m of mutations) {
+      if (m.type === 'attributes') {
+        if (m.attributeName === 'contenteditable' && m.target instanceof HTMLElement) {
+          const el = m.target;
+          if (el.matches(CE_SELECTOR)) attachContenteditable(el);
+        }
+        continue;
+      }
       m.addedNodes.forEach(node => {
         if (!(node instanceof HTMLElement)) return;
         if (node.matches(ALL_EDITOR_SELECTOR)) attachAny(node);
         node.querySelectorAll?.(ALL_EDITOR_SELECTOR).forEach(el => attachAny(el as HTMLElement));
       });
-      // An element may become contenteditable dynamically; the attribute
-      // mutation case is rare and adds observer cost, so we skip it and
-      // rely on initial sweep + childList additions only.
     }
   });
-  mo.observe(document.documentElement, { childList: true, subtree: true });
+  mo.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['contenteditable'],
+  });
+
+  // Safety net for host pages that wire up editors behind our back (e.g.
+  // Gmail compose, some React portals). When an unattached editor gains
+  // focus, attach it then.
+  document.addEventListener('focusin', e => {
+    const t = e.target as HTMLElement | null;
+    if (!t || editors.has(t)) return;
+    if (t.matches(TEXT_CONTROL_SELECTOR)) attach(t);
+    else if (t.matches(CE_SELECTOR)) attachContenteditable(t);
+  }, { capture: true });
 }
 
 function attach(el: HTMLElement) {
@@ -278,10 +300,12 @@ function attachContenteditable(el: HTMLElement) {
   for (const ed of editorRegistry) {
     if (ed !== el && ed.contains(el)) return;
   }
-  // Minimum visible size guard so we don't attach to empty 0-height divs that
-  // become contenteditable only when clicked.
-  const rect = el.getBoundingClientRect();
-  if (rect.width < 120 || rect.height < 16) return;
+  // Reject truly invisible editors (display: none, visibility: hidden). We
+  // no longer reject by bounding rect -- Gmail's compose body has zero size
+  // before the dialog opens, and the MO / focusin paths re-attach on the
+  // way in.
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return;
 
   const badge = document.createElement('span');
   badge.className = `${HOST_CLASS} ${BADGE_CLASS} lsd-hidden`;
@@ -1780,6 +1804,10 @@ function escapeText(s: string): string {
 function escapeAttr(s: string): string {
   return escapeText(s);
 }
+
+// Marker so you can verify the content script is running in any given frame
+// by checking `window.__lsd` in the DevTools console.
+(window as any).__lsd = { loaded: true, build: '2' };
 
 // Kick things off. document_idle in the manifest means the DOM is parsed;
 // still check in case a host page defers content.
