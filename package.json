@@ -132,6 +132,11 @@
           "default": [],
           "description": "File-glob patterns to skip, using .gitignore syntax. Merged with patterns from a .slopignore file at the workspace root. Example: [\"CHANGELOG.md\", \"docs/generated/**\"]. Use !pattern to re-include after a broader ignore."
         },
+        "llmSlopDetector.decorateExplorer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mark files in the explorer that are known to contain LLM slop. Updates as you open scanned files; run 'Scan workspace' to populate marks for files you haven't opened."
+        },
         "llmSlopDetector.debounceMs": {
           "type": "number",
           "default": 150,
