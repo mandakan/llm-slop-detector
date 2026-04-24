@@ -13,7 +13,7 @@ No install needed -- paste text into the [web playground](https://mandakan.githu
 
 ## Browser extension (Chrome, Arc, Firefox)
 
-A WebExtension that scans `<textarea>` and text inputs as you type on any webpage, showing a small "N slop" badge next to each editor. Click the badge for a per-finding popover with severity, reason, source pack, and a "Fix this" button for deterministic character fixes (em dash, curly quotes, zero-width, etc.). Runs entirely in the browser -- no network calls, no telemetry.
+A WebExtension that scans `<textarea>` and text inputs as you type on any webpage, highlights findings inline with colour-coded marks over the text, and shows a small "N slop" badge next to each editor. Click the badge for a per-finding popover with severity, reason, source pack, a per-finding "Fix this" button, and a "Fix all chars" button that applies every deterministic character replacement (em dash, curly quotes, zero-width, etc.) at once. Runs entirely in the browser -- no network calls, no telemetry.
 
 **Install from source (until stores are wired up):**
 
@@ -30,10 +30,9 @@ Toggle off globally (or per-site) via the extension's toolbar button. Pick rule 
 
 ### Known limitations (v1)
 
-- `contenteditable` editors (Gmail compose, Substack, Notion, LinkedIn) are not yet supported -- only `<textarea>` and `<input type=text>`.
+- `contenteditable` editors (Gmail compose, Substack, Notion, LinkedIn) are not yet supported -- only `<textarea>` and `<input type=text>`. Inline marks only render over textareas.
 - Google Docs uses a canvas-based renderer with no real DOM text; the extension can't see its contents and won't work there.
 - Cross-origin iframes are invisible for the same-origin-policy reason.
-- No inline `<mark>` highlighting over the textarea yet; findings are listed in the popover only.
 
 ## Features
 
