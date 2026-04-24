@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.5.0...llm-slop-detector-v0.6.0) (2026-04-24)
+
+
+### Features
+
+* add .slopignore and llmSlopDetector.exclude for file-glob skips ([#46](https://github.com/mandakan/llm-slop-detector/issues/46)) ([836f081](https://github.com/mandakan/llm-slop-detector/commit/836f08165405311d4adc1457d9bf6e03ea37a4ef))
+* add llmSlopDetector.severityOverrides for per-rule tuning ([#47](https://github.com/mandakan/llm-slop-detector/issues/47)) ([d4d8750](https://github.com/mandakan/llm-slop-detector/commit/d4d87505ccd7593ea77cceb03be5c1f199c46e2a)), closes [#37](https://github.com/mandakan/llm-slop-detector/issues/37)
+* add Scan workspace command ([#53](https://github.com/mandakan/llm-slop-detector/issues/53)) ([26e3270](https://github.com/mandakan/llm-slop-detector/commit/26e32708d9903efc7a87632f87495eacbfaf9114))
+* expose detector as stdio MCP server for agent self-linting ([#51](https://github.com/mandakan/llm-slop-detector/issues/51)) ([bdd7e29](https://github.com/mandakan/llm-slop-detector/commit/bdd7e29fcd0e067dc5086997ac476193eb7a0da4))
+* publish CLI to npm ([#55](https://github.com/mandakan/llm-slop-detector/issues/55)) ([fe529e7](https://github.com/mandakan/llm-slop-detector/commit/fe529e764731bafad2553fc1268c2696741e4fcd))
+* scan git commit messages and SCM input box ([#44](https://github.com/mandakan/llm-slop-detector/issues/44)) ([3e3196e](https://github.com/mandakan/llm-slop-detector/commit/3e3196e7ebc14614d27eee35c3c051effb176591)), closes [#40](https://github.com/mandakan/llm-slop-detector/issues/40)
+* ship JSON Schema for .llmsloprc.json ([#45](https://github.com/mandakan/llm-slop-detector/issues/45)) ([96c2e0b](https://github.com/mandakan/llm-slop-detector/commit/96c2e0bd0bce338333d24fc71771209a62c19d0c)), closes [#36](https://github.com/mandakan/llm-slop-detector/issues/36)
+
+
+### Performance Improvements
+
+* debounce document scanning on keystrokes ([#42](https://github.com/mandakan/llm-slop-detector/issues/42)) ([0ddb4ca](https://github.com/mandakan/llm-slop-detector/commit/0ddb4cacfc9205ac44bb9a997bbf5bea3c005731)), closes [#41](https://github.com/mandakan/llm-slop-detector/issues/41)
+
 ## [0.5.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.4.0...llm-slop-detector-v0.5.0) (2026-04-23)
 
 
