@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BUILTIN_PACKS, LOCAL_RULES_FILENAME, loadRules as coreLoadRules, parseSeverityOverrides } from './core/rules';
+import { BUILTIN_PACKS, LOCAL_RULES_FILENAME, parseSeverityOverrides } from './core/rules';
+import { loadRules as coreLoadRules } from './node/ruleLoader';
 import { RuleSet, Severity } from './core/types';
 
 export { LOCAL_RULES_FILENAME, BUILTIN_PACKS };

@@ -8,7 +8,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { BUILTIN_PACKS, findLocalRulePathFromCwd, loadRules } from './core/rules';
+import { BUILTIN_PACKS } from './core/rules';
+import { findLocalRulePathFromCwd, loadRules } from './node/ruleLoader';
 import { Language, offsetToLineCol, scanText } from './core/scan';
 import { RuleSet } from './core/types';
 

@@ -1,21 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { CharRule, PhraseRule, RuleSet, Severity, SeverityOverride } from './types';
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
 export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural', 'security', 'gemini', 'deepseek', 'llama', 'qwen', 'grok'] as const;
 export type BuiltinPack = typeof BUILTIN_PACKS[number];
-
-export type LoadOptions = {
-  extensionRoot: string;
-  useBuiltin: boolean;
-  enabledPacks: string[];
-  localRulePaths: string[];
-  userPhrases: string[];
-  charReplacements: Record<string, string>;
-  severityOverrides: Record<string, SeverityOverride>;
-};
 
 type RawCharRule = {
   char?: unknown;
@@ -31,12 +19,20 @@ type RawPhraseRule = {
   severity?: unknown;
 };
 
-type RawList = {
+export type RawList = {
   name?: unknown;
   version?: unknown;
   description?: unknown;
   chars?: unknown;
   phrases?: unknown;
+  [key: string]: unknown;
+};
+
+export type LoadOptions = {
+  lists: Array<{ origin: string; raw: RawList }>;
+  userPhrases: string[];
+  charReplacements: Record<string, string>;
+  severityOverrides: Record<string, SeverityOverride>;
 };
 
 function parseSeverity(s: unknown, fallback: Severity): Severity {
@@ -124,19 +120,6 @@ function ingestList(raw: RawList, origin: string, target: RuleSet): void {
   });
 }
 
-function readJsonFile(p: string): RawList | null {
-  try {
-    const text = fs.readFileSync(p, 'utf8');
-    const parsed = JSON.parse(text);
-    if (typeof parsed === 'object' && parsed !== null) return parsed as RawList;
-    console.warn(`[LLM Slop] ${p} is not a JSON object`);
-    return null;
-  } catch (e) {
-    console.warn(`[LLM Slop] Failed to read ${p}:`, e);
-    return null;
-  }
-}
-
 function buildCharRegex(chars: Map<string, CharRule>): RegExp {
   if (chars.size === 0) return /(?!)/g;
   const body = Array.from(chars.keys())
@@ -151,7 +134,7 @@ function charCodepointSelector(char: string): string {
 
 // Normalize `char:u+2014` / `char:U+2014` / `char:U+02014` to a single canonical
 // key so lookups don't depend on user casing or zero-padding. Literal char keys
-// (`char:—`) and non-char selectors pass through unchanged.
+// (`char:--`) and non-char selectors pass through unchanged.
 function normalizeOverrideKey(key: string): string {
   if (!key.startsWith('char:')) return key;
   const rest = key.slice(5);
@@ -189,7 +172,7 @@ function resolveCharOverride(
   rule: CharRule,
   overrides: Record<string, SeverityOverride>,
 ): SeverityOverride | undefined {
-  // Most specific: rule-level. Literal first so `char:—: hint` beats
+  // Most specific: rule-level. Literal first so `char:--: hint` beats
   // `char:U+2014: off` when both are present.
   const literal = `char:${rule.char}`;
   if (literal in overrides) return overrides[literal];
@@ -274,23 +257,8 @@ export function loadRules(opts: LoadOptions): RuleSet {
     overridesApplied: 0,
   };
 
-  if (opts.useBuiltin) {
-    const builtinPath = path.join(opts.extensionRoot, 'builtin-rules.json');
-    const raw = readJsonFile(builtinPath);
-    if (raw) ingestList(raw, 'built-in', rules);
-  }
-
-  const allowed = new Set<string>(BUILTIN_PACKS);
-  for (const pack of opts.enabledPacks) {
-    if (!allowed.has(pack)) continue;
-    const packPath = path.join(opts.extensionRoot, 'builtin-packs', `${pack}.json`);
-    const raw = readJsonFile(packPath);
-    if (raw) ingestList(raw, `pack:${pack}`, rules);
-  }
-
-  for (const p of opts.localRulePaths) {
-    const raw = readJsonFile(p);
-    if (raw) ingestList(raw, p, rules);
+  for (const { origin, raw } of opts.lists) {
+    ingestList(raw, origin, rules);
   }
 
   if (opts.userPhrases.length > 0) {
@@ -324,15 +292,4 @@ export function loadRules(opts: LoadOptions): RuleSet {
 
   rules.charRegex = buildCharRegex(rules.chars);
   return rules;
-}
-
-export function findLocalRulePathFromCwd(startDir: string): string | null {
-  let dir = path.resolve(startDir);
-  while (true) {
-    const candidate = path.join(dir, LOCAL_RULES_FILENAME);
-    if (fs.existsSync(candidate)) return candidate;
-    const parent = path.dirname(dir);
-    if (parent === dir) return null;
-    dir = parent;
-  }
 }

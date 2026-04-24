@@ -2,7 +2,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseArgs } from 'util';
-import { BUILTIN_PACKS, findLocalRulePathFromCwd, loadRules, parseSeverityOverrides } from './core/rules';
+import { BUILTIN_PACKS, parseSeverityOverrides } from './core/rules';
+import { findLocalRulePathFromCwd, loadRules } from './node/ruleLoader';
 import { Finding, RuleSet, SEVERITY_RANK, Severity, SeverityOverride } from './core/types';
 import { Language, offsetToLineCol, scanText } from './core/scan';
 import { IgnoreMatcher, loadIgnoreMatcher } from './core/ignore';

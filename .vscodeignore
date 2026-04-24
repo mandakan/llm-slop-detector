@@ -4,6 +4,8 @@
 .claude/**
 docs/**
 src/**
+web/**
+web-dist/**
 test-fixtures/**
 .gitignore
 .slopignore

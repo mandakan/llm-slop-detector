@@ -7,6 +7,10 @@ A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, a
 
 ![LLM Slop Detector in action](https://raw.githubusercontent.com/mandakan/llm-slop-detector/main/docs/screenshot.png)
 
+## Try it in the browser
+
+No install needed -- paste text into the [web playground](https://mandakan.github.io/llm-slop-detector/) and get findings instantly. Everything runs in your browser; nothing is uploaded.
+
 ## Features
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
