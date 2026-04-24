@@ -86,6 +86,106 @@ function isIgnoredDocument(doc: vscode.TextDocument): boolean {
 // can recover rule metadata (pattern, matched char) without rescanning.
 const FINDINGS_BY_URI = new Map<string, Finding[]>();
 
+// Explorer decoration provider. Marks files known to contain slop so users
+// can see where work is pending without having to open each file. Populated
+// lazily from two sources: documents scanned while open, and results from
+// the workspace-scan command. Folders get the color via `propagate: true`;
+// VS Code only re-queries ancestors when we fire events for them, so the
+// provider walks up to the workspace root on every state change.
+class SlopDecorationProvider implements vscode.FileDecorationProvider {
+  private emitter = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
+  readonly onDidChangeFileDecorations = this.emitter.event;
+  private slopyPaths = new Set<string>();
+
+  setFileState(uri: vscode.Uri, hasSlop: boolean): void {
+    if (uri.scheme !== 'file') return;
+    const p = uri.fsPath;
+    const had = this.slopyPaths.has(p);
+    if (had === hasSlop) return;
+    if (hasSlop) this.slopyPaths.add(p);
+    else this.slopyPaths.delete(p);
+    this.emitter.fire(this.urisForPathAndAncestors(p));
+  }
+
+  applyScanResults(slopyPaths: Iterable<string>, scannedPaths: Iterable<string>): void {
+    const next = new Set(slopyPaths);
+    const changed: vscode.Uri[] = [];
+    for (const p of scannedPaths) {
+      const shouldMark = next.has(p);
+      const isMarked = this.slopyPaths.has(p);
+      if (shouldMark === isMarked) continue;
+      if (shouldMark) this.slopyPaths.add(p);
+      else this.slopyPaths.delete(p);
+      for (const u of this.urisForPathAndAncestors(p)) changed.push(u);
+    }
+    if (changed.length > 0) this.emitter.fire(changed);
+  }
+
+  forgetPath(fsPath: string): void {
+    if (!this.slopyPaths.delete(fsPath)) return;
+    this.emitter.fire(this.urisForPathAndAncestors(fsPath));
+  }
+
+  clearAll(): void {
+    if (this.slopyPaths.size === 0) return;
+    this.slopyPaths.clear();
+    this.emitter.fire(undefined);
+  }
+
+  provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    if (uri.scheme !== 'file') return;
+    if (this.slopyPaths.has(uri.fsPath)) {
+      return {
+        badge: 'S',
+        tooltip: 'Contains LLM slop',
+        color: new vscode.ThemeColor('list.warningForeground'),
+        propagate: true,
+      };
+    }
+    // Folders: return decoration if any tracked file lives under this path.
+    // The tree rarely has more than a handful of slopy files, so an O(n)
+    // scan per folder query is fine and avoids maintaining a separate index.
+    const folderPrefix = uri.fsPath + path.sep;
+    for (const p of this.slopyPaths) {
+      if (p.startsWith(folderPrefix)) {
+        return {
+          tooltip: 'Contains LLM slop',
+          color: new vscode.ThemeColor('list.warningForeground'),
+          propagate: true,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  private urisForPathAndAncestors(fsPath: string): vscode.Uri[] {
+    const uris: vscode.Uri[] = [vscode.Uri.file(fsPath)];
+    const folder = vscode.workspace.workspaceFolders?.find(f =>
+      fsPath === f.uri.fsPath || fsPath.startsWith(f.uri.fsPath + path.sep)
+    );
+    if (!folder) return uris;
+    let cur = path.dirname(fsPath);
+    const root = folder.uri.fsPath;
+    while (cur.length >= root.length && cur.startsWith(root)) {
+      uris.push(vscode.Uri.file(cur));
+      if (cur === root) break;
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
+    }
+    return uris;
+  }
+}
+
+let DECORATION_PROVIDER: SlopDecorationProvider | undefined;
+
+function updateDecorationForDocument(doc: vscode.TextDocument, findings: vscode.Diagnostic[]): void {
+  if (!DECORATION_PROVIDER || doc.uri.scheme !== 'file') return;
+  const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+  if (!cfg.get<boolean>('decorateExplorer', true)) return;
+  DECORATION_PROVIDER.setFileState(doc.uri, findings.length > 0);
+}
+
 // Pending debounced refreshes keyed by document URI. Leading-edge scan fires
 // immediately on the first change after idle; `trailing` flips to true when
 // further changes arrive during the debounce window, triggering one more scan
@@ -249,9 +349,12 @@ export function activate(context: vscode.ExtensionContext) {
     if (!enabled || !SUPPORTED_LANGS.has(doc.languageId as Language) || isIgnoredDocument(doc)) {
       collection.delete(doc.uri);
       FINDINGS_BY_URI.delete(doc.uri.toString());
+      updateDecorationForDocument(doc, []);
       return;
     }
-    collection.set(doc.uri, scanDocument(doc));
+    const diags = scanDocument(doc);
+    collection.set(doc.uri, diags);
+    updateDecorationForDocument(doc, diags);
   };
 
   // Leading+trailing debounce: first change after idle triggers an immediate
@@ -335,9 +438,16 @@ export function activate(context: vscode.ExtensionContext) {
     RULES = loadRules(context.extensionUri);
     reloadIgnore();
     rebuildSupportedLangs();
+    const cfg = vscode.workspace.getConfiguration('llmSlopDetector');
+    const decorate = cfg.get<boolean>('decorateExplorer', true);
+    const enabled = cfg.get<boolean>('enabled', true);
+    if (!decorate || !enabled) DECORATION_PROVIDER?.clearAll();
     vscode.workspace.textDocuments.forEach(refresh);
     updateStatus();
   };
+
+  DECORATION_PROVIDER = new SlopDecorationProvider();
+  context.subscriptions.push(vscode.window.registerFileDecorationProvider(DECORATION_PROVIDER));
 
   reloadRules();
 
@@ -368,6 +478,12 @@ export function activate(context: vscode.ExtensionContext) {
       updateStatus();
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(reloadRules),
+    vscode.workspace.onDidDeleteFiles(e => {
+      for (const uri of e.files) DECORATION_PROVIDER?.forgetPath(uri.fsPath);
+    }),
+    vscode.workspace.onDidRenameFiles(e => {
+      for (const { oldUri } of e.files) DECORATION_PROVIDER?.forgetPath(oldUri.fsPath);
+    }),
     vscode.workspace.onDidGrantWorkspaceTrust(reloadRules),
     vscode.window.onDidChangeActiveTextEditor(() => updateStatus()),
     vscode.languages.onDidChangeDiagnostics(() => updateStatus()),
@@ -555,7 +671,7 @@ async function scanWorkspace(): Promise<void> {
 
   type Target = { absPath: string; uri: vscode.Uri; lang: Language; relPath: string };
 
-  const hits = await vscode.window.withProgress<WorkspaceHit[] | undefined>({
+  const result = await vscode.window.withProgress<{ hits: WorkspaceHit[]; scannedPaths: Set<string> } | undefined>({
     location: vscode.ProgressLocation.Notification,
     title: 'LLM Slop Detector: scanning workspace',
     cancellable: true,
@@ -574,7 +690,8 @@ async function scanWorkspace(): Promise<void> {
       }, token);
     }
     if (token.isCancellationRequested) return undefined;
-    if (targets.length === 0) return [];
+    const scannedPaths = new Set<string>(targets.map(t => t.absPath));
+    if (targets.length === 0) return { hits: [], scannedPaths };
 
     // Use the in-memory text of any open document so unsaved changes are
     // reflected in the scan, falling back to the on-disk version otherwise.
@@ -620,10 +737,16 @@ async function scanWorkspace(): Promise<void> {
     }));
 
     if (token.isCancellationRequested) return undefined;
-    return out;
+    return { hits: out, scannedPaths };
   });
 
-  if (hits === undefined) return;
+  if (result === undefined) return;
+  const { hits, scannedPaths } = result;
+  if (cfg.get<boolean>('decorateExplorer', true) && DECORATION_PROVIDER) {
+    const slopyAbsPaths = new Set<string>();
+    for (const h of hits) slopyAbsPaths.add(h.uri.fsPath);
+    DECORATION_PROVIDER.applyScanResults(slopyAbsPaths, scannedPaths);
+  }
   if (hits.length === 0) {
     vscode.window.showInformationMessage('LLM Slop Detector: no findings in the workspace.');
     return;
