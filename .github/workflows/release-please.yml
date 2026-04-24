@@ -25,7 +25,6 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
 
       - run: npm ci
         if: ${{ steps.release.outputs.release_created }}
@@ -44,6 +43,9 @@ jobs:
       - env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx --yes @vscode/vsce publish -p "$VSCE_PAT"
+        if: ${{ steps.release.outputs.release_created }}
+
+      - run: npm install -g npm@latest
         if: ${{ steps.release.outputs.release_created }}
 
       - run: npm publish
