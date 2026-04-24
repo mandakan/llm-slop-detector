@@ -11,7 +11,7 @@ A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, a
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
-- Configurable phrase rules: ~40 built-in core rules plus six opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`) totalling 285+ curated regex patterns
+- Configurable phrase rules: ~40 built-in core rules plus eleven opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
 - Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
 - Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
 - Hover over any flagged range for the rule selector plus a ready-to-copy `slop-disable-next-line` snippet
@@ -151,6 +151,14 @@ The core list is deliberately conservative: ~40 phrase rules covering the buzzwo
 - **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
 - **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.
 - **`security`** -- LLM-weaponized invisibles above the BMP: tag characters (U+E0020-U+E007F, used in ASCII-smuggler prompt injection) and variation selectors (U+FE00-U+FE0E + U+E0100-U+E01EF, used for arbitrary-data smuggling in emoji and CJK). Severity `error`. Skips U+FE0F (emoji presentation selector) to avoid false positives. Opt in if you copy-paste LLM output into files you don't fully trust.
+
+Model-family packs flag mannerisms specific to one vendor's models. Mix and match:
+
+- **`gemini`** -- Google Gemini / Bard: breakdown-happy structure (`here's a breakdown`, `let's break it down`), analogy openers (`think of it as`, `imagine a`), `I hope this helps` closers, and identity / knowledge-cutoff / professional-advice disclaimers.
+- **`deepseek`** -- DeepSeek V3 / R1: `<think>` tag leaks, R1 reasoning tics leaking into final output (`Wait,`, `Hmm,`, `Let me reconsider`, `the user is asking`), DeepSeek special-token leaks (`<|begin_of_thought|>`, `<|EOT|>`).
+- **`llama`** -- Meta Llama: `as an AI` identity disclaimers, Llama-Guard refusal boilerplate (`I cannot provide`, `it would not be appropriate`), and Llama2 / Llama3 chat-template token leaks (`[INST]`, `<|eot_id|>`, `<<SYS>>`, `<|python_tag|>`).
+- **`qwen`** -- Alibaba Qwen / QwQ: `Sure!` / `Of course!` openers, Alibaba identity disclaimers, ChatML token leaks (`<|im_start|>`), Qwen-VL tokens (`<|vision_start|>`), and QwQ reasoning-phase tics.
+- **`grok`** -- xAI Grok: `Look,` / `Here's the deal` openers, forced directness (`no BS`, `straight up`, `real talk`), edginess (`based`, `cope`, `galaxy-brained`), Hitchhiker's Guide references (`42`, `Don't panic`), and Elon/X name-drops.
 
 Enable one or more in your settings:
 

@@ -4,7 +4,7 @@ import { CharRule, PhraseRule, RuleSet, Severity, SeverityOverride } from './typ
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
-export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural', 'security'] as const;
+export const BUILTIN_PACKS = ['academic', 'cliches', 'fiction', 'claudeisms', 'structural', 'security', 'gemini', 'deepseek', 'llama', 'qwen', 'grok'] as const;
 export type BuiltinPack = typeof BUILTIN_PACKS[number];
 
 export type LoadOptions = {
