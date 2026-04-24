@@ -33,7 +33,7 @@ Four pieces of user-visible surface, all wired up in `activate()`:
 Rules (chars + phrases) load from these layers, merged in order. Later layers override earlier on the same char or pattern.
 
 1. **Built-in core**: `builtin-rules.json` at repo root, shipped in the vsix, read at activation from `context.extensionUri`. Disable via `llmSlopDetector.useBuiltinRules: false`. Contains no third-party content.
-2. **Built-in packs** (opt-in): JSON files in `builtin-packs/`, loaded when their name appears in `llmSlopDetector.enabledPacks`. Current packs: `academic`, `cliches`, `fiction`, `claudeisms`, `structural`. Whitelist is in `BUILTIN_PACKS` in `src/rules.ts` -- unknown names are ignored. Attribution for each pack is in `THIRD_PARTY_NOTICES.md`.
+2. **Built-in packs** (opt-in): JSON files in `builtin-packs/`, loaded when their name appears in `llmSlopDetector.enabledPacks`. Current packs: `academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`. Whitelist is in `BUILTIN_PACKS` in `src/core/rules.ts` -- unknown names are ignored. Attribution for each pack (where required) is in `THIRD_PARTY_NOTICES.md`.
 3. **Local**: `.llmsloprc.json` in a workspace folder's root. Same schema as the built-in file. Auto-loaded if present, live-reloaded via `vscode.workspace.createFileSystemWatcher`.
 4. **User settings**: `llmSlopDetector.phrases` (additive list of regex strings) and `llmSlopDetector.charReplacements` (map of char to replacement, overrides earlier layers).
 

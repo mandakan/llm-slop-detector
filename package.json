@@ -78,7 +78,12 @@
               "fiction",
               "claudeisms",
               "structural",
-              "security"
+              "security",
+              "gemini",
+              "deepseek",
+              "llama",
+              "qwen",
+              "grok"
             ],
             "enumDescriptions": [
               "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
@@ -86,7 +91,12 @@
               "Fiction and creative-writing LLM tells, including NSFW markers (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary",
-              "Flags LLM-weaponized invisibles above the BMP: tag chars (ASCII-smuggler prompt injection) and variation selectors (arbitrary-data smuggling). Severity: error."
+              "Flags LLM-weaponized invisibles above the BMP: tag chars (ASCII-smuggler prompt injection) and variation selectors (arbitrary-data smuggling). Severity: error.",
+              "Google Gemini / Bard tells: breakdown-happy structure, 'I hope this helps' closers, identity and knowledge-cutoff disclaimers",
+              "DeepSeek V3/R1 tells, notably <think> tags and R1 reasoning tics ('Wait,', 'Hmm,', 'Let me reconsider') leaking into output",
+              "Meta Llama tells: 'as an AI' disclaimers, Llama-Guard refusal boilerplate, and Llama2/Llama3 chat-template token leaks ([INST], <|eot_id|>, etc.)",
+              "Alibaba Qwen / QwQ tells: cheerful 'Sure!' openers, Alibaba identity disclaimers, and ChatML / QwQ reasoning token leaks",
+              "xAI Grok tells: 'Look,' openers, forced edginess ('based', 'cope', 'no BS'), Hitchhiker's Guide references, and Elon/X name-drops"
             ]
           },
           "default": [],
