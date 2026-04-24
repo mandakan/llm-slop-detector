@@ -1,5 +1,9 @@
 node_modules/
 out/
+web-dist/
+web/rules.generated.ts
+web/**/*.js
+web/**/*.js.map
 *.vsix
 .vscode-test/
 .claude/settings.local.json

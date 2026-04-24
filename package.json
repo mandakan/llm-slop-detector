@@ -230,11 +230,14 @@
     "compile": "tsc -p ./ && chmod +x out/cli.js out/mcp.js",
     "watch": "tsc -watch -p ./",
     "package": "npx --yes @vscode/vsce package",
-    "slop": "node ./out/cli.js"
+    "slop": "node ./out/cli.js",
+    "build:web": "node web/build.mjs",
+    "dev:web": "node web/build.mjs --watch"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.95.0",
+    "esbuild": "^0.28.0",
     "typescript": "^5.7.0"
   },
   "dependencies": {
