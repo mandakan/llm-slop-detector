@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LLM Slop Detector",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Flags invisible Unicode, AI-style punctuation, and telltale LLM phrases as you type -- or in any page you're reading. Local only.",
   "permissions": [
     "storage"
