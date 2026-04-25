@@ -20,6 +20,15 @@
     </section>
 
     <section>
+      <h2>Rich-text editors</h2>
+      <p class="hint">Browser rich-text editors (Gmail, Proton Mail, Outlook, Slack, Discord, etc.) routinely insert non-breaking spaces between words as a layout trick -- they're not in the message you actually send. By default we hide NBSP / narrow-NBSP findings inside <code>contenteditable</code> fields to keep the noise down. Other invisible characters and AI-style punctuation are still flagged everywhere.</p>
+      <label class="toggle">
+        <input type="checkbox" id="nbsp-richtext-enabled">
+        <span>Detect non-breaking spaces in rich-text editors</span>
+      </label>
+    </section>
+
+    <section>
       <h2>Rule packs</h2>
       <p class="hint">Core rules are always on. Packs add extra model-specific or domain-specific phrases.</p>
       <div id="packs" class="packs"></div>

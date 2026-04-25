@@ -482,6 +482,17 @@ function setCeCaretOffset(fragments: CeFragment[], targetOffset: number) {
   } catch { /* ignore */ }
 }
 
+// Browser contenteditable engines (Gmail, Proton, Outlook, Slack, Discord, ...)
+// auto-insert U+00A0 / U+202F between words as a layout trick to keep
+// whitespace from collapsing. They're a render artifact, not what gets sent
+// over the wire, so flagging every word boundary just adds noise. We drop
+// these specific findings inside contenteditables unless the user opts in
+// via Options.
+function filterRichTextFindings(findings: Finding[]): Finding[] {
+  if (prefs.detectNbspInRichText) return findings;
+  return findings.filter(f => f.matchText !== '\u00A0' && f.matchText !== '\u202F');
+}
+
 function findingsEqual(a: Finding[], b: Finding[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -514,7 +525,7 @@ function runScanCe(state: EditorState) {
     return;
   }
 
-  const findings = scanText(text, rules, LANGUAGE);
+  const findings = filterRichTextFindings(scanText(text, rules, LANGUAGE));
 
   if (findingsEqual(findings, state.lastFindings)) {
     // Text may have changed (user typed whitespace) but findings are the

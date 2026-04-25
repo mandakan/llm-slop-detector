@@ -67,17 +67,23 @@ async function init() {
   const packsEl = $('packs');
   const hostsEl = $('disabled-hosts');
   const roToggle = $('readonly-enabled') as HTMLInputElement;
+  const nbspToggle = $('nbsp-richtext-enabled') as HTMLInputElement;
   renderPacks(packsEl, prefs);
   renderDisabledHosts(hostsEl, prefs);
   roToggle.checked = prefs.readOnlyEnabled;
+  nbspToggle.checked = prefs.detectNbspInRichText;
   roToggle.addEventListener('change', async () => {
     await updatePrefs({ readOnlyEnabled: roToggle.checked });
+  });
+  nbspToggle.addEventListener('change', async () => {
+    await updatePrefs({ detectNbspInRichText: nbspToggle.checked });
   });
   onPrefsChanged(next => {
     prefs = next;
     renderPacks(packsEl, prefs);
     renderDisabledHosts(hostsEl, prefs);
     roToggle.checked = prefs.readOnlyEnabled;
+    nbspToggle.checked = prefs.detectNbspInRichText;
   });
 }
 
