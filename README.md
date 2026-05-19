@@ -1,6 +1,8 @@
 # LLM Slop Detector
 
 [![Install on VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=thias-se.llm-slop-detector)
+[![Install on Chrome Web Store](https://img.shields.io/badge/Chrome-Web%20Store-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/llm-slop-detector/ancpfnfeflffphhpaejhpggfhjmafeid)
+[![Install on Firefox Add-ons](https://img.shields.io/badge/Firefox-Add--ons-FF7139?logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/llm-slop-detector/)
 [![License: MIT](https://img.shields.io/github/license/mandakan/llm-slop-detector)](LICENSE)
 
 A VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, and telltale LLM phrases in `markdown` and `plaintext` files. The CLI shares its rule engine with the editor, so local and CI findings stay in sync.
@@ -15,7 +17,12 @@ No install needed -- paste text into the [web playground](https://mandakan.githu
 
 A WebExtension that scans `<textarea>`, text inputs, and `contenteditable` elements (Gmail compose, vanilla rich-text widgets) as you type on any webpage. Findings are highlighted inline with colour-coded marks -- textarea marks are tinted background, contenteditable marks are wavy underlines so they don't disturb reading of styled content. A small "N slop" badge next to each editor opens a per-finding popover with severity, reason, source pack, per-finding "Fix this" buttons, and a "Fix all chars" button that applies every deterministic character replacement (em dash, curly quotes, zero-width, etc.) at once. For contenteditables the fix goes through `execCommand('insertText')` so the host editor's undo stack still works (`Cmd+Z`). Runs entirely in the browser -- no network calls, no telemetry.
 
-**Install from source (until stores are wired up):**
+**Install from a store:**
+
+- **Chrome / Arc / Edge / Brave:** [Chrome Web Store listing](https://chromewebstore.google.com/detail/llm-slop-detector/ancpfnfeflffphhpaejhpggfhjmafeid). Chromium forks accept the same package.
+- **Firefox:** [Firefox Add-ons listing](https://addons.mozilla.org/en-US/firefox/addon/llm-slop-detector/).
+
+**Install from source (for hacking on the rules):**
 
 ```sh
 npm ci
