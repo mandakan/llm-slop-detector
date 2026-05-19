@@ -124,6 +124,9 @@ answers ready to paste into the form:
 
 ## URLs
 
+- Chrome Web Store listing: `https://chromewebstore.google.com/detail/llm-slop-detector/ancpfnfeflffphhpaejhpggfhjmafeid`
+- Firefox AMO listing: `https://addons.mozilla.org/en-US/firefox/addon/llm-slop-detector/`
+- Edge Add-ons listing: (not yet submitted)
 - Privacy policy: `https://mandakan.github.io/llm-slop-detector/privacy.html`
 - Support site / homepage: `https://github.com/mandakan/llm-slop-detector`
 - Source code: same as above (MIT-licensed)
