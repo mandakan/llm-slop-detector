@@ -9,6 +9,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
@@ -52,3 +55,94 @@ jobs:
 
       - run: npx -y npm@latest publish
         if: ${{ steps.release.outputs.release_created }}
+
+  # Browser-extension store publishing. Kept in a SEPARATE job that only runs
+  # after release-please succeeds, so a store rejection or expired credential
+  # can never fail the vsix / Open VSX / npm publish above -- those have already
+  # finished by the time this job starts. Each store step is also
+  # continue-on-error so one bad store does not block the other two (the
+  # trade-off: a real failure shows as a yellow annotation, not a red job --
+  # check the run logs after a release).
+  #
+  # PREREQUISITES (one-time, manual):
+  #  - The listing must already exist and have cleared first review on each
+  #    store. These APIs only UPDATE an existing item; they cannot create one.
+  #  - Repo secrets:
+  #      Chrome:  CHROME_EXTENSION_ID, CHROME_CLIENT_ID, CHROME_CLIENT_SECRET,
+  #               CHROME_REFRESH_TOKEN
+  #      Edge:    EDGE_PRODUCT_ID, EDGE_CLIENT_ID, EDGE_API_KEY
+  #      Firefox: AMO_JWT_ISSUER, AMO_JWT_SECRET
+  #  - Pin/verify the action and CLI versions below before relying on this;
+  #    store APIs (esp. Edge auth and AMO source upload) shift over time.
+  #
+  # Publishing here means "submit for review" -- each store still reviews the
+  # update before it goes live.
+  publish-browser:
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Produces llm-slop-detector-browser-<version>.zip at the repo root and
+      # leaves the unpacked build in extension-browser-dist/ (needed by AMO).
+      - run: npm run package:browser
+
+      - id: zip
+        run: echo "path=$(ls llm-slop-detector-browser-*.zip)" >> "$GITHUB_OUTPUT"
+
+      # Attach the zip to the GitHub Release for manual sideloading / audit.
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ needs.release-please.outputs.tag_name }} ${{ steps.zip.outputs.path }}
+        continue-on-error: true
+
+      - name: Publish to Chrome Web Store
+        continue-on-error: true
+        env:
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          npx --yes chrome-webstore-upload-cli@3 upload \
+            --source "${{ steps.zip.outputs.path }}" \
+            --extension-id "$EXTENSION_ID" \
+            --client-id "$CLIENT_ID" \
+            --client-secret "$CLIENT_SECRET" \
+            --refresh-token "$REFRESH_TOKEN" \
+            --auto-publish
+
+      - name: Publish to Edge Add-ons
+        continue-on-error: true
+        uses: wdzeng/edge-addon@v2
+        with:
+          product-id: ${{ secrets.EDGE_PRODUCT_ID }}
+          zip-path: ${{ steps.zip.outputs.path }}
+          client-id: ${{ secrets.EDGE_CLIENT_ID }}
+          api-key: ${{ secrets.EDGE_API_KEY }}
+
+      # AMO requires a source-code submission whenever the published code is
+      # minified/bundled (ours is esbuild-minified). git archive captures the
+      # exact source for this tag; reviewers reproduce with
+      # `npm ci && npm run package:browser` (Node 22). web-ext signs the
+      # unpacked dir on the "listed" channel and submits for review.
+      - name: Publish to Firefox AMO
+        continue-on-error: true
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          git archive --format=zip -o source.zip HEAD
+          npx --yes web-ext@8 sign \
+            --channel listed \
+            --source-dir extension-browser-dist \
+            --upload-source-code source.zip \
+            --approval-timeout 0
