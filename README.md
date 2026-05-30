@@ -52,7 +52,7 @@ Turn this off in the options page if you only want to lint your own writing. The
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
-- Configurable phrase rules: ~40 built-in core rules plus twelve opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`, `openai`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
+- Configurable phrase rules: ~40 built-in core rules plus thirteen opt-in packs (`academic`, `cliches`, `puffery`, `fiction`, `claudeisms`, `structural`, `security`, `openai`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
 - Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
 - Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
 - Hover over any flagged range for the rule selector plus a ready-to-copy `slop-disable-next-line` snippet
@@ -188,6 +188,7 @@ The core list is deliberately conservative: ~40 phrase rules covering the buzzwo
 
 - **`academic`** -- words over-represented in LLM-authored academic writing (`bolster`, `elucidate`, `facilitate`, `showcase`, `noteworthy`, ~90 entries). Severity `hint` so the Problems panel stays usable. Derived from [`berenslab/llm-excess-vocab`](https://github.com/berenslab/llm-excess-vocab) (MIT).
 - **`cliches`** -- general LLM cliche vocabulary (`captivating`, `pinnacle`, `galvanize`, journey/landscape/symphony metaphors). Derived from [`nanxstats/llm-cliches`](https://github.com/nanxstats/llm-cliches) (MIT).
+- **`puffery`** -- promotional / editorializing puffery: `rich cultural heritage`, `nestled in the heart of`, `boasts`, `enduring legacy`, `leaves an indelible mark`, `deeply rooted`, `diverse array of`, copula-avoidance flourishes. Original content.
 - **`fiction`** -- fiction and creative-writing tells (breath hitched, heart hammering, shivers down spine, chestnut eyes, LLM-cliche character names). **Includes adult-fiction markers.** Derived from [`SicariusSicariiStuff/SLOP_Detector`](https://github.com/SicariusSicariiStuff/SLOP_Detector) (Apache-2.0).
 - **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
 - **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.

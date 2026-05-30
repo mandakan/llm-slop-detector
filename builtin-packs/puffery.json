@@ -1,0 +1,19 @@
+{
+  "name": "pack:puffery",
+  "version": "0.1.0",
+  "description": "Promotional / editorializing puffery common in LLM prose: 'rich cultural heritage', 'nestled in the heart of', 'boasts', 'enduring legacy', 'leaves an indelible mark', and copula-avoidance flourishes. Original content -- regexes hand-authored, no third-party rule set incorporated.",
+  "phrases": [
+    { "pattern": "\\brich (cultural|literary|artistic|musical|architectural|natural|historical|spiritual) heritage\\b", "reason": "puffery" },
+    { "pattern": "\\b(stands|serves|stood|served) as a testament\\b", "reason": "puffery" },
+    { "pattern": "\\bleaves? an indelible mark\\b", "reason": "puffery" },
+    { "pattern": "\\bvaluable insights?\\b", "reason": "LLM filler" },
+    { "pattern": "\\bnestled (in|between|among|amid|along|within|atop|beside|deep)\\b", "reason": "travel-writing puffery" },
+    { "pattern": "\\benduring (legacy|appeal|charm|popularity|influence|presence|significance)\\b", "reason": "puffery" },
+    { "pattern": "\\bvibrant (community|culture|tapestry|atmosphere|scene|hub|ecosystem|nightlife|array|mix|blend)\\b", "reason": "puffery" },
+    { "pattern": "\\bboasts? (a|an|the|its|some|several|numerous|over|more than|impressive|stunning|an array|a range)\\b", "reason": "copula-avoidance puffery" },
+    { "pattern": "\\bdeeply rooted\\b", "reason": "puffery" },
+    { "pattern": "\\bsetting the stage for\\b", "reason": "LLM transition cliche" },
+    { "pattern": "\\b(a |an )?diverse array of\\b", "reason": "puffery" },
+    { "pattern": "\\bbreathtaking (views?|scenery|beauty|landscapes?|vistas?)\\b", "reason": "puffery" }
+  ]
+}

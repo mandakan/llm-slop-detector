@@ -75,6 +75,7 @@
             "enum": [
               "academic",
               "cliches",
+              "puffery",
               "fiction",
               "claudeisms",
               "structural",
@@ -89,6 +90,7 @@
             "enumDescriptions": [
               "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
               "General LLM cliche adjectives/nouns/verbs (derived from nanxstats/llm-cliches, MIT)",
+              "Promotional / editorializing puffery: 'rich cultural heritage', 'nestled in the heart of', 'boasts', 'enduring legacy', 'leaves an indelible mark', copula-avoidance flourishes. Original content.",
               "Fiction and creative-writing LLM tells, including NSFW markers (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary",
