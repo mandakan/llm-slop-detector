@@ -52,7 +52,7 @@ Turn this off in the options page if you only want to lint your own writing. The
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
-- Configurable phrase rules: ~40 built-in core rules plus eleven opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
+- Configurable phrase rules: ~40 built-in core rules plus twelve opt-in packs (`academic`, `cliches`, `fiction`, `claudeisms`, `structural`, `security`, `openai`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
 - Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
 - Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
 - Hover over any flagged range for the rule selector plus a ready-to-copy `slop-disable-next-line` snippet
@@ -191,10 +191,11 @@ The core list is deliberately conservative: ~40 phrase rules covering the buzzwo
 - **`fiction`** -- fiction and creative-writing tells (breath hitched, heart hammering, shivers down spine, chestnut eyes, LLM-cliche character names). **Includes adult-fiction markers.** Derived from [`SicariusSicariiStuff/SLOP_Detector`](https://github.com/SicariusSicariiStuff/SLOP_Detector) (Apache-2.0).
 - **`claudeisms`** -- Claude-specific mannerisms: sycophantic openers, consent-theater phrasing, "important to note that" hedges. Derived from SLOP_Detector.
 - **`structural`** -- structural LLM tells: "not X but Y" negation pivots, sycophantic line openers, "in this section we'll" meta-commentary, "at the end of the day" closers. Original content.
-- **`security`** -- LLM-weaponized invisibles above the BMP: tag characters (U+E0020-U+E007F, used in ASCII-smuggler prompt injection) and variation selectors (U+FE00-U+FE0E + U+E0100-U+E01EF, used for arbitrary-data smuggling in emoji and CJK). Severity `error`. Skips U+FE0F (emoji presentation selector) to avoid false positives. Opt in if you copy-paste LLM output into files you don't fully trust.
+- **`security`** -- LLM-weaponized invisibles above the BMP: tag characters (U+E0020-U+E007F, used in ASCII-smuggler prompt injection) and variation selectors (U+FE00-U+FE0E + U+E0100-U+E01EF, used for arbitrary-data smuggling in emoji and CJK), plus invisible math operators (U+2061-U+2064), deprecated format controls (U+206A-U+206F), the combining grapheme joiner (U+034F), Mongolian free variation selectors (U+180B-U+180D), and the Braille blank (U+2800). Severity `error` (`warning` for the few code points with rare legitimate use). Skips U+FE0F (emoji presentation selector) to avoid false positives. Opt in if you copy-paste LLM output into files you don't fully trust.
 
 Model-family packs flag mannerisms specific to one vendor's models. Mix and match:
 
+- **`openai`** -- OpenAI GPT / ChatGPT: citation-markup artifact leaks (`oaicite`, `oai_citation`, `contentReference`, `turn0search0`-style web-tool tokens), AI-identity and knowledge-cutoff disclaimers (`as an AI language model`, `knowledge cutoff`), refusal boilerplate (`I cannot fulfill that request`), and stock opener/closer/hedge scaffolding (`Certainly!`, `here's a comprehensive overview`, `I hope this helps`). Original content.
 - **`gemini`** -- Google Gemini / Bard: breakdown-happy structure (`here's a breakdown`, `let's break it down`), analogy openers (`think of it as`, `imagine a`), `I hope this helps` closers, and identity / knowledge-cutoff / professional-advice disclaimers.
 - **`deepseek`** -- DeepSeek V3 / R1: `<think>` tag leaks, R1 reasoning tics leaking into final output (`Wait,`, `Hmm,`, `Let me reconsider`, `the user is asking`), DeepSeek special-token leaks (`<|begin_of_thought|>`, `<|EOT|>`).
 - **`llama`** -- Meta Llama: `as an AI` identity disclaimers, Llama-Guard refusal boilerplate (`I cannot provide`, `it would not be appropriate`), and Llama2 / Llama3 chat-template token leaks (`[INST]`, `<|eot_id|>`, `<<SYS>>`, `<|python_tag|>`).
