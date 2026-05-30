@@ -1,32 +1,48 @@
 # LLM Slop Detector
 
-VS Code extension and CLI that flag invisible Unicode, AI-style punctuation, and LLM-telltale phrases in `markdown` and `plaintext` files.
+Flags invisible Unicode, AI-style punctuation, and LLM-telltale phrases in `markdown` and `plaintext`. The same rule engine ships across five surfaces: a VS Code extension, a CLI, an MCP server, a browser extension (Chrome/Firefox/Edge), and a web playground. All five share the pure `src/core/` engine so they always produce identical findings.
 
-- Extension entry: `src/extension.ts`
-- CLI entry: `src/cli.ts` (shipped as `llm-slop` via the `bin` field; same rule engine as the extension)
-- Pure core (no `vscode` import): `src/core/types.ts`, `src/core/rules.ts`, `src/core/scan.ts`, `src/core/comments.ts`. Shared by extension and CLI so they always produce identical findings.
+- VS Code extension entry: `src/extension.ts`
+- CLI entry: `src/cli.ts` (shipped as `llm-slop` via the `bin` field)
+- MCP server entry: `src/mcp.ts` (shipped as `llm-slop-mcp` via the `bin` field; stdio MCP server exposing the detector as a tool)
+- Browser extension: `extension-browser/` (Manifest V3, content script + popup + options page; targets Chrome/Arc, Firefox, and Edge). See `docs/STORE_SUBMISSION.md`.
+- Web playground: `web/` (GitHub Pages, deployed by `.github/workflows/pages.yml`)
+- Pure core (no `vscode` import): `src/core/types.ts`, `src/core/rules.ts`, `src/core/scan.ts`, `src/core/comments.ts`, `src/core/ignore.ts`. Shared by all surfaces.
+- Node-only rule loading: `src/node/ruleLoader.ts` (used by CLI and MCP server -- reads `builtin-rules.json`, packs, and local `.llmsloprc.json` from disk)
 - VS Code adapter: `src/rules.ts` reads workspace config and delegates to `src/core/rules.ts`; `severityToVscode()` maps the pure `Severity` string union to `vscode.DiagnosticSeverity`
 - Built-in rule list: `builtin-rules.json` at repo root
 - Pre-commit hook: `.pre-commit-hooks.yaml` at repo root
-- No bundler: `tsc` outputs to `out/`; `compile` also `chmod +x out/cli.js`
+- **Two build paths.** The VS Code extension, CLI, and MCP server are built with `tsc` to `out/` (no bundler; the extension host and Node load CJS). The browser extension and web playground are bundled with **esbuild** (`extension-browser/build.mjs`, `web/build.mjs`) into `extension-browser-dist/` and `web-dist/`. Both esbuild paths read `builtin-rules.json` + `builtin-packs/*.json` at build time and emit a `rules.generated.ts` so the bundle has no `fs` dependency, then import the pure core from `src/core/`. `compile` also `chmod +x out/cli.js out/mcp.js`.
 
 ## Build & run
 
-- `npm run compile`: one-shot TypeScript build
-- `npm run watch`: incremental rebuild
+- `npm run compile`: one-shot `tsc` build of the VS Code extension, CLI, and MCP server
+- `npm run watch`: incremental `tsc` rebuild
 - `npm run package`: produces `llm-slop-detector-<version>.vsix` locally
 - `npm run slop -- <paths>`: run the CLI from source against files/dirs
+- `npm run build:browser` / `dev:browser`: esbuild the browser extension into `extension-browser-dist/` (one-shot / watch)
+- `npm run package:browser`: build + zip the browser extension to `llm-slop-detector-browser-<version>.zip` for store upload
+- `npm run build:web` / `dev:web`: esbuild the web playground into `web-dist/` (one-shot / watch)
 
-The fast dev loop is **F5 in VS Code**. Launches an Extension Development Host with the extension loaded (`.vscode/launch.json` starts the watcher via `preLaunchTask`). Edit, save, `Cmd+R` in the dev window.
+The fast dev loop for the VS Code extension is **F5 in VS Code**. Launches an Extension Development Host with the extension loaded (`.vscode/launch.json` starts the watcher via `preLaunchTask`). Edit, save, `Cmd+R` in the dev window. For the browser extension, run `dev:browser` and load `extension-browser-dist/` as an unpacked extension (Chrome: `chrome://extensions`, enable Developer mode; Firefox: `about:debugging` -> load temporary add-on).
 
 ## Architecture
+
+The pure `src/core/` engine is surface-agnostic. Each surface is a thin adapter over it:
+
+- **VS Code extension** (`src/extension.ts`): diagnostics, code actions, status bar, commands -- see below.
+- **CLI** (`src/cli.ts`) and **MCP server** (`src/mcp.ts`): load rules via `src/node/ruleLoader.ts`, scan via `src/core/scan.ts`, report findings (CLI to stdout/exit code; MCP as a tool result).
+- **Browser extension** (`extension-browser/`): a content script marks flagged text inline in editable fields and offers a "scan this page" action; popup and options page configure packs and per-host enable/disable, persisted via `chrome.storage` (`extension-browser/src/storage.ts`). Rules come from the build-time `rules.generated.ts`, not disk.
+- **Web playground** (`web/`): paste-and-scan demo running the same core in the browser.
+
+### VS Code extension surface
 
 Four pieces of user-visible surface, all wired up in `activate()`:
 
 1. **Diagnostics**: `scanDocument()` runs on open/change, reads from module-level `RULES` (a `RuleSet` returned by `loadRules()`), emits `vscode.Diagnostic`s with `source = 'LLM Slop'` and `code` of `'char'` or `'phrase'`.
 2. **Code actions**: `SlopCodeActionProvider` offers per-diagnostic quick fixes (when a `CharRule` has a `replacement`) and a "Fix all LLM slop characters in file" action. Gated on the cursor's current diagnostic context containing a fixable char, otherwise the fix-all lightbulb appears on phrase diagnostics too.
 3. **Status bar**: right-aligned item shows slop count for the active `markdown`/`plaintext` editor. Warning background when there are issues, check icon when clean, circle-slash when the extension is disabled. Click calls `llmSlopDetector.toggle`.
-4. **Commands**: `llmSlopDetector.toggle` and `llmSlopDetector.showRuleSources`.
+4. **Commands**: `llmSlopDetector.toggle`, `openSettings`, `showRuleSources`, `showOnboarding`, `scanSelection`, and `scanWorkspace` (see the `contributes.commands` block in `package.json`).
 
 ## Rule sources
 
@@ -120,22 +136,27 @@ Managed by `.github/workflows/release-please.yml`. Do not bump `version` in `pac
 1. Work on a feature branch with a Conventional Commit PR title, let CI pass, and **squash-merge** (the default). The PR title becomes the commit subject on `main` and is the only input release-please sees for this PR. For the rare PR that genuinely needs multiple CHANGELOG entries, pick "Create a merge commit" instead and follow the merge-commit rules in "Merge strategy" above.
 2. release-please opens (or updates) a **Release PR** titled "chore(main): release X.Y.Z" with the proposed version bump and CHANGELOG diff.
 3. When ready to ship, merge the Release PR.
-4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`.
+4. release-please creates the tag, the GitHub Release, and updates `CHANGELOG.md` on `main`. The single version is shared: `extension-browser/manifest.json` is wired into release-please's `extra-files`, so the same Release PR that bumps `package.json` also bumps the browser extension's version.
 5. Same workflow then builds the vsix, uploads it to the GitHub Release, publishes to the VS Code Marketplace under publisher `thias-se`, and publishes to the Open VSX Registry (for VSCodium and other non-Microsoft forks) under the same namespace.
 6. Install from Marketplace / Open VSX, or sideload: `code --install-extension llm-slop-detector-X.Y.Z.vsix` (or `codium --install-extension ...`).
 
 Marketplace publish uses an Azure DevOps PAT stored as the `VSCE_PAT` repo secret. Open VSX publish uses a token from open-vsx.org stored as `OVSX_PAT`; the `thias-se` namespace must exist there (one-time: `npx ovsx create-namespace thias-se -p $OVSX_PAT`). release-please itself runs with a GitHub fine-grained PAT stored as `RELEASE_PLEASE_TOKEN` so that the Release-PR merge actually triggers downstream workflow steps (the default `GITHUB_TOKEN` does not, by design).
 
+**Browser-extension publishing is manual**, not part of the release workflow. After a Release PR merges, run `npm run package:browser` and upload the resulting zip to the Chrome Web Store, Firefox AMO, and Edge Add-ons dashboards. `docs/STORE_SUBMISSION.md` holds the copy-paste listing metadata, screenshot list, and per-store timelines. The web playground deploys automatically to GitHub Pages via `.github/workflows/pages.yml`.
+
 ## Versions & targets
 
 - `engines.vscode`: `^1.95.0` (sensible floor, don't chase bleeding edge)
-- TypeScript: `^5.7`, `target: ES2022`, `module: commonjs` (extension host loads CJS, don't switch to ESM)
-- `@types/node`: `^22` (matches CI Node 22 LTS)
-- No bundler. If startup ever matters, switch to esbuild (`platform: node`, `format: cjs`, `external: ['vscode']`).
+- TypeScript: `^5.7`, `target: ES2022`, `module: commonjs` (extension host and Node load CJS, don't switch to ESM for the `tsc` path)
+- `@types/node`: matches CI Node LTS; `@types/chrome` for the browser extension
+- Browser extension: Manifest V3, esbuild `format: iife`, `platform: browser`, `target: ['chrome110', 'firefox128']`. The same zip is accepted by Chrome, Firefox, and Edge.
+- The `tsc` path (VS Code extension, CLI, MCP server) stays bundler-free. Only the browser extension and web playground use esbuild.
 
 ## Packaging
 
 `.vscodeignore` keeps the vsix lean: `builtin-rules.json`, `builtin-packs/`, `package.json`, `README.md`, `THIRD_PARTY_NOTICES.md`, `LICENSE`, root governance files, and `out/` ship. Dev files, release-please config, `src/`, `.github/`, `.claude/`, and CLAUDE.md are excluded.
+
+The browser-extension zip is a separate artifact -- `.vscodeignore` doesn't apply. `extension-browser/build.mjs` controls exactly what lands in `extension-browser-dist/` (manifest, bundled `content/action/options.js`, HTML, CSS, icons) and what gets zipped. Rules are baked in at build time via `rules.generated.ts`, so the zip carries no `fs` reads and no `builtin-packs/` directory.
 
 Third-party-licensed content lives only in `builtin-packs/*.json`. `THIRD_PARTY_NOTICES.md` must ship alongside any pack that contains derivative content. When adding a new pack sourced from a third-party project, also add its license block to `THIRD_PARTY_NOTICES.md` in the same commit.
 
