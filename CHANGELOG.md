@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.9.0...llm-slop-detector-v0.10.0) (2026-05-31)
+
+
+### Features
+
+* add openai pack, citation-artifact tokens, and missing invisibles ([#92](https://github.com/mandakan/llm-slop-detector/issues/92)) ([8b41050](https://github.com/mandakan/llm-slop-detector/commit/8b41050c5c613635a1debf397e0e49ea46497cda))
+* add puffery pack for promotional LLM phrasing ([#94](https://github.com/mandakan/llm-slop-detector/issues/94)) ([f54a711](https://github.com/mandakan/llm-slop-detector/commit/f54a711f6f8b325a04d39adea9adb58f0d5a1201))
+
 ## [0.9.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.8.1...llm-slop-detector-v0.9.0) (2026-05-30)
 
 
