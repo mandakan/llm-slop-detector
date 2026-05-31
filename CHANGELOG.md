@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.8.1...llm-slop-detector-v0.9.0) (2026-05-30)
+
+
+### Features
+
+* skip NBSP detection in rich-text editors by default ([#79](https://github.com/mandakan/llm-slop-detector/issues/79)) ([ba90929](https://github.com/mandakan/llm-slop-detector/commit/ba90929299e3cc84845901c7091b104ff98e185c))
+
+
+### Bug Fixes
+
+* **deps:** bump vulnerable transitive deps flagged by dependabot ([#95](https://github.com/mandakan/llm-slop-detector/issues/95)) ([90228a7](https://github.com/mandakan/llm-slop-detector/commit/90228a7a468840e06f47ea64be839af90695eb25))
+
 ## [0.8.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.8.0...llm-slop-detector-v0.8.1) (2026-04-24)
 
 
