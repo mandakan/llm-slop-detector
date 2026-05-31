@@ -2,12 +2,21 @@ name: release-please
 on:
   push:
     branches: [main]
+  # Manual recovery path -- see the `republish` job below.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to (re)publish, e.g. llm-slop-detector-v0.9.0'
+        required: true
+        type: string
 permissions:
   contents: write
   pull-requests: write
   id-token: write
 jobs:
   release-please:
+    # Only the push path creates releases. workflow_dispatch goes to `republish`.
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -20,6 +29,8 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Build steps are fail-fast prerequisites: if any fails, publishing can't
+      # proceed, so don't mask it.
       - uses: actions/checkout@v6
         if: ${{ steps.release.outputs.release_created }}
 
@@ -38,23 +49,86 @@ jobs:
       - run: npx --yes @vscode/vsce package
         if: ${{ steps.release.outputs.release_created }}
 
+      # Publish steps run independently: `!cancelled()` keeps each one running
+      # even if an earlier publish failed, so e.g. an expired VSCE_PAT no longer
+      # blocks the Open VSX and npm publishes. A real failure still turns the
+      # job red.
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ steps.release.outputs.tag_name }} *.vsix
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ !cancelled() && steps.release.outputs.release_created }}
 
       - env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx --yes @vscode/vsce publish -p "$VSCE_PAT"
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ !cancelled() && steps.release.outputs.release_created }}
 
       - env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: npx --yes ovsx publish *.vsix -p "$OVSX_PAT"
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ !cancelled() && steps.release.outputs.release_created }}
 
       - run: npx -y npm@latest publish
-        if: ${{ steps.release.outputs.release_created }}
+        if: ${{ !cancelled() && steps.release.outputs.release_created }}
+
+  # Manual recovery path: re-publish an already-created release tag to the VS
+  # Code Marketplace, Open VSX, and npm. Use this when the automated publish in
+  # `release-please` above failed (e.g. an expired VSCE_PAT). A plain "Re-run
+  # failed jobs" will NOT republish, because release-please-action only emits
+  # release_created=true on the run that first creates the release -- on a
+  # re-run the release already exists, so every publish step is gated off.
+  #
+  # Trigger from the Actions tab ("Run workflow") with the release tag, e.g.
+  # `llm-slop-detector-v0.9.0`. Each publish step runs independently
+  # (`if: !cancelled()`), so one bad credential -- or a target that already has
+  # this version -- does not block the others. A real failure still turns the
+  # job red, so re-running after a partial success will show the
+  # already-published target(s) as failed; that's expected and can be ignored.
+  republish:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run compile
+
+      - run: npx --yes @vscode/vsce package
+
+      # Refresh the vsix attached to the release (in case the original upload
+      # was missing or stale).
+      - name: Upload vsix to release
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ inputs.tag }}" *.vsix --clobber
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ !cancelled() }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce publish --packagePath *.vsix -p "$VSCE_PAT"
+
+      - name: Publish to Open VSX
+        if: ${{ !cancelled() }}
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx publish *.vsix -p "$OVSX_PAT"
+
+      - name: Publish to npm
+        if: ${{ !cancelled() }}
+        run: npx -y npm@latest publish
 
   # Browser-extension store publishing. Kept in a SEPARATE job that only runs
   # after release-please succeeds, so a store rejection or expired credential
