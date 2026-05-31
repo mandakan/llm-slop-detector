@@ -1,7 +1,7 @@
 {
   "name": "pack:security",
-  "version": "0.1.0",
-  "description": "LLM-weaponized invisibles above the BMP: tag characters (ASCII-smuggler prompt injection) and variation selectors (arbitrary-data smuggling). Severity: error.",
+  "version": "0.2.0",
+  "description": "LLM-weaponized invisibles above the BMP: tag characters (ASCII-smuggler prompt injection), variation selectors (arbitrary-data smuggling), invisible math operators, and deprecated/zero-width format controls used to hide instructions or smuggle data. Severity: error (warning for chars with rare legitimate use).",
   "chars": [
     {"char":"󠀁","name":"LANGUAGE TAG (U+E0001)","severity":"error","replacement":""},
     {"char":"󠀠","name":"TAG \" \" (U+E0020)","severity":"error","replacement":""},
@@ -354,6 +354,21 @@
     {"char":"󠇬","name":"VARIATION SELECTOR-253 (U+E01EC)","severity":"error","replacement":""},
     {"char":"󠇭","name":"VARIATION SELECTOR-254 (U+E01ED)","severity":"error","replacement":""},
     {"char":"󠇮","name":"VARIATION SELECTOR-255 (U+E01EE)","severity":"error","replacement":""},
-    {"char":"󠇯","name":"VARIATION SELECTOR-256 (U+E01EF)","severity":"error","replacement":""}
+    {"char":"󠇯","name":"VARIATION SELECTOR-256 (U+E01EF)","severity":"error","replacement":""},
+    {"char":"⁡","name":"FUNCTION APPLICATION (U+2061)","severity":"error","replacement":""},
+    {"char":"⁢","name":"INVISIBLE TIMES (U+2062)","severity":"error","replacement":""},
+    {"char":"⁣","name":"INVISIBLE SEPARATOR (U+2063)","severity":"error","replacement":""},
+    {"char":"⁤","name":"INVISIBLE PLUS (U+2064)","severity":"error","replacement":""},
+    {"char":"͏","name":"COMBINING GRAPHEME JOINER (U+034F)","severity":"warning","replacement":""},
+    {"char":"⁪","name":"INHIBIT SYMMETRIC SWAPPING (U+206A)","severity":"error","replacement":""},
+    {"char":"⁫","name":"ACTIVATE SYMMETRIC SWAPPING (U+206B)","severity":"error","replacement":""},
+    {"char":"⁬","name":"INHIBIT ARABIC FORM SHAPING (U+206C)","severity":"error","replacement":""},
+    {"char":"⁭","name":"ACTIVATE ARABIC FORM SHAPING (U+206D)","severity":"error","replacement":""},
+    {"char":"⁮","name":"NATIONAL DIGIT SHAPES (U+206E)","severity":"error","replacement":""},
+    {"char":"⁯","name":"NOMINAL DIGIT SHAPES (U+206F)","severity":"error","replacement":""},
+    {"char":"᠋","name":"MONGOLIAN FREE VARIATION SELECTOR ONE (U+180B)","severity":"warning","replacement":""},
+    {"char":"᠌","name":"MONGOLIAN FREE VARIATION SELECTOR TWO (U+180C)","severity":"warning","replacement":""},
+    {"char":"᠍","name":"MONGOLIAN FREE VARIATION SELECTOR THREE (U+180D)","severity":"warning","replacement":""},
+    {"char":"⠀","name":"BRAILLE PATTERN BLANK (U+2800)","severity":"warning","replacement":""}
   ]
 }
