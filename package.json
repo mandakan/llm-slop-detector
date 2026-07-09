@@ -246,7 +246,7 @@
     "@types/node": "^25.6.0",
     "@types/vscode": "^1.95.0",
     "esbuild": "^0.28.0",
-    "typescript": "^5.7.0"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0"
