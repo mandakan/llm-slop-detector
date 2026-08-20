@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.10.0...llm-slop-detector-v0.10.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* bump transitive deps to resolve dependabot advisories ([#110](https://github.com/mandakan/llm-slop-detector/issues/110)) ([804ce9f](https://github.com/mandakan/llm-slop-detector/commit/804ce9fcef3c0400c26f1381ac767975d81dfb7f))
+
 ## [0.10.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.9.0...llm-slop-detector-v0.10.0) (2026-05-31)
 
 
