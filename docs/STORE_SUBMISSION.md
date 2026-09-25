@@ -76,11 +76,12 @@ As you read
 - One-shot, click-to-scan only. No background scanning.
 
 Rules are configurable
-- ~40 built-in core rules plus eleven opt-in packs covering academic
+- ~40 built-in core rules plus fourteen opt-in packs covering academic
   writing, general LLM cliches, fiction tells, Claude-specific
   mannerisms, structural patterns ("not X but Y"), invisible-Unicode
-  security threats, and model-specific tells for Gemini, DeepSeek,
-  Llama, Qwen, and Grok -- 500+ curated regex patterns in total.
+  security threats, and model-specific tells for OpenAI, Gemini,
+  DeepSeek, Llama, Qwen, Grok, and Perplexity -- 500+ curated regex
+  patterns in total.
 - Enable only the packs you care about. Per-site disable in one click.
 
 Privacy

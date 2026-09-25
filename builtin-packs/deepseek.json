@@ -1,8 +1,9 @@
 {
   "name": "pack:deepseek",
-  "version": "0.1.0",
-  "description": "DeepSeek V3/R1 mannerisms, most notably reasoning-trace tokens and thinking-phase tics that leak into finished output.",
+  "version": "0.2.0",
+  "description": "DeepSeek V3/R1 mannerisms, most notably reasoning-trace tokens and thinking-phase tics that leak into finished output, plus search-citation artifacts (lenticular bracket + dagger).",
   "phrases": [
+    { "pattern": "\u3010\\d+\u2020", "reason": "DeepSeek search-citation artifact leak (lenticular bracket + dagger)", "severity": "warning" },
     { "pattern": "<\\s*/?\\s*think\\s*>", "reason": "DeepSeek R1 reasoning tag leak", "severity": "warning" },
     { "pattern": "<\\s*/?\\s*thinking\\s*>", "reason": "reasoning tag leak", "severity": "warning" },
     { "pattern": "<\\s*/?\\s*reasoning\\s*>", "reason": "reasoning tag leak", "severity": "warning" },

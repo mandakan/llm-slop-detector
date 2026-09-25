@@ -1,0 +1,10 @@
+{
+  "name": "pack:perplexity",
+  "version": "0.1.0",
+  "description": "Perplexity artifact leaks: file-upload and attachment markup that survives copy-paste out of the answer UI. Original content -- hand-authored regexes for functional strings; no third-party rule set incorporated.",
+  "phrases": [
+    { "pattern": "\\bppl-ai-file-upload\\b", "reason": "Perplexity file-upload artifact leak", "severity": "warning" },
+    { "pattern": "\\battached_file\\b", "reason": "Perplexity attachment artifact leak", "severity": "warning" },
+    { "pattern": "utm_source=perplexity", "reason": "Perplexity-generated reference URL tracking parameter", "severity": "warning" }
+  ]
+}
