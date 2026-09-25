@@ -1,6 +1,6 @@
 {
   "name": "pack:grok",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "xAI Grok mannerisms: conversational 'look,' openers, forced edginess, Hitchhiker's Guide references, and Elon/X name-drops.",
   "phrases": [
     { "pattern": "^\\s*look,?\\s", "reason": "Grok opener" },
@@ -36,6 +36,7 @@
     { "pattern": "\\bhitchhiker'?s guide\\b", "reason": "Grok Hitchhiker's reference" },
     { "pattern": "\\bmostly harmless\\b", "reason": "Grok Hitchhiker's reference" },
     { "pattern": "\\bgrok_card\\b", "reason": "Grok citation-markup artifact leak", "severity": "warning" },
+    { "pattern": "\\bgrok_render_citation_card_json\\b", "reason": "Grok citation-markup artifact leak", "severity": "warning" },
     { "pattern": "\\bi'?m grok\\b", "reason": "Grok identity disclaimer" },
     { "pattern": "\\bi am grok\\b", "reason": "Grok identity disclaimer" },
     { "pattern": "\\bas grok,?\\b", "reason": "Grok identity disclaimer" },
