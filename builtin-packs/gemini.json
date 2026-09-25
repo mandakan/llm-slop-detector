@@ -1,11 +1,13 @@
 {
   "name": "pack:gemini",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Google Gemini (and legacy Bard) mannerisms: breakdown-happy structure, enthusiastic openers/closers, identity disclaimers, and citation-markup artifact leaks ([cite: 1], [span_1](start_span)).",
   "phrases": [
     { "pattern": "\\[cite:\\s*\\d+", "reason": "Gemini citation-markup artifact leak", "severity": "warning" },
     { "pattern": "\\[span_\\d+\\]", "reason": "Gemini citation-markup artifact leak", "severity": "warning" },
     { "pattern": "\\b(start|end)_span\\b", "reason": "Gemini citation-markup artifact leak", "severity": "warning" },
+    { "pattern": "\\bincredibly\\b", "reason": "Gemini 3.1 intensifier, 18x human rate (Graphite 2026)" },
+    { "pattern": "\\bthis comprehensive guide\\b", "reason": "Gemini 3.1 framing tic (Graphite 2026)" },
     { "pattern": "\\bhere'?s (a |the |your )?(detailed |quick |brief |simple )?breakdown\\b", "reason": "Gemini structural tic" },
     { "pattern": "\\bhere'?s (a |the )?(quick |simple |brief )?rundown\\b", "reason": "Gemini structural tic" },
     { "pattern": "\\blet'?s break (it|this|that) down\\b", "reason": "Gemini structural tic" },

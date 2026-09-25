@@ -1,6 +1,6 @@
 {
   "name": "pack:puffery",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Promotional / editorializing puffery common in LLM prose: 'rich cultural heritage', 'nestled in the heart of', 'boasts', 'enduring legacy', 'leaves an indelible mark', and copula-avoidance flourishes. Original content -- regexes hand-authored, no third-party rule set incorporated.",
   "phrases": [
     { "pattern": "\\brich (cultural|literary|artistic|musical|architectural|natural|historical|spiritual) heritage\\b", "reason": "puffery" },
@@ -14,6 +14,8 @@
     { "pattern": "\\bdeeply rooted\\b", "reason": "puffery" },
     { "pattern": "\\bsetting the stage for\\b", "reason": "LLM transition cliche" },
     { "pattern": "\\b(a |an )?diverse array of\\b", "reason": "puffery" },
-    { "pattern": "\\bbreathtaking (views?|scenery|beauty|landscapes?|vistas?)\\b", "reason": "puffery" }
+    { "pattern": "\\bbreathtaking (views?|scenery|beauty|landscapes?|vistas?)\\b", "reason": "puffery" },
+    { "pattern": "\\bquiet (confidence|strength|power|rebellion|revolution|dignity|resilience|brilliance|truth|grief|ache|hum|defiance|intensity|luxury)\\b", "reason": "'quiet X' editorializing flourish (2026 cross-vendor tell)" },
+    { "pattern": "\\bquietly (powerful|revolutionary|radical|devastating|transformative|reshaping|redefining|remarkable|profound|brilliant)\\b", "reason": "'quietly X' editorializing flourish (2026 cross-vendor tell)" }
   ]
 }

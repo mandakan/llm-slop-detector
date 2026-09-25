@@ -1,6 +1,6 @@
 {
   "name": "pack:openai",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenAI GPT / ChatGPT tells: citation-markup artifact leaks (oaicite, contentReference, attributableIndex, the U+E200-U+E203 private-use citation delimiters, utm_source=chatgpt.com), AI-identity and knowledge-cutoff disclaimers, refusal boilerplate, and stock opener/closer/hedge scaffolding. Original content -- regexes hand-authored to match commonly-observed stock phrasing; no third-party rule set incorporated.",
   "chars": [
     { "char": "\ue200", "name": "PRIVATE USE U+E200 (ChatGPT citation delimiter)", "severity": "warning", "replacement": "" },
@@ -37,6 +37,7 @@
     { "pattern": "\\b(feel free|don'?t hesitate) to (ask|reach out|let me know)\\b", "reason": "GPT closer" },
     { "pattern": "\\bis there anything else (I can|you'?d like)\\b", "reason": "GPT closer" },
     { "pattern": "\\bgenerally speaking,?\\b", "reason": "GPT hedge" },
+    { "pattern": "\\brather than relying (on|solely)\\b", "reason": "GPT-6 contrastive tic, 187x human rate (Graphite 2026)" },
     { "pattern": "\\bit'?s (important|worth|essential) to (note|remember|keep in mind|mention) that\\b", "reason": "GPT hedge" },
     { "pattern": "\\bdepending on (the|your) (context|specific|particular|needs|situation)\\b", "reason": "GPT hedge" }
   ]

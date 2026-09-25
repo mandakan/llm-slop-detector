@@ -1,6 +1,6 @@
 {
   "name": "pack:security",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LLM-weaponized invisibles above the BMP: tag characters (ASCII-smuggler prompt injection), variation selectors (arbitrary-data smuggling), invisible math operators, and deprecated/zero-width format controls used to hide instructions or smuggle data. Severity: error (warning for chars with rare legitimate use).",
   "chars": [
     {"char":"󠀁","name":"LANGUAGE TAG (U+E0001)","severity":"error","replacement":""},
@@ -369,6 +369,19 @@
     {"char":"᠋","name":"MONGOLIAN FREE VARIATION SELECTOR ONE (U+180B)","severity":"warning","replacement":""},
     {"char":"᠌","name":"MONGOLIAN FREE VARIATION SELECTOR TWO (U+180C)","severity":"warning","replacement":""},
     {"char":"᠍","name":"MONGOLIAN FREE VARIATION SELECTOR THREE (U+180D)","severity":"warning","replacement":""},
-    {"char":"⠀","name":"BRAILLE PATTERN BLANK (U+2800)","severity":"warning","replacement":""}
+    {"char":"⠀","name":"BRAILLE PATTERN BLANK (U+2800)","severity":"warning","replacement":""},
+    {"char":" ","name":"EN QUAD (U+2000)","severity":"warning","replacement":" "},
+    {"char":" ","name":"EM QUAD (U+2001)","severity":"warning","replacement":" "},
+    {"char":" ","name":"EN SPACE (U+2002)","severity":"warning","replacement":" "},
+    {"char":" ","name":"EM SPACE (U+2003)","severity":"warning","replacement":" "},
+    {"char":" ","name":"THREE-PER-EM SPACE (U+2004)","severity":"warning","replacement":" "},
+    {"char":" ","name":"FOUR-PER-EM SPACE (U+2005)","severity":"warning","replacement":" "},
+    {"char":" ","name":"SIX-PER-EM SPACE (U+2006)","severity":"warning","replacement":" "},
+    {"char":" ","name":"FIGURE SPACE (U+2007)","severity":"warning","replacement":" "},
+    {"char":" ","name":"PUNCTUATION SPACE (U+2008)","severity":"warning","replacement":" "},
+    {"char":" ","name":"THIN SPACE (U+2009)","severity":"warning","replacement":" "},
+    {"char":" ","name":"HAIR SPACE (U+200A)","severity":"warning","replacement":" "},
+    {"char":" ","name":"MEDIUM MATHEMATICAL SPACE (U+205F)","severity":"warning","replacement":" "},
+    {"char":"　","name":"IDEOGRAPHIC SPACE (U+3000)","severity":"warning","replacement":" "}
   ]
 }
