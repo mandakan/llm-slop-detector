@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      # Must stay at the engines.vscode floor; vsce refuses to package when the
+      # declared @types/vscode range exceeds it.
+      - dependency-name: "@types/vscode"
     commit-message:
       prefix: "chore"
       include: "scope"
