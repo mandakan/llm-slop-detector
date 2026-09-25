@@ -2,7 +2,7 @@ import { CharRule, PhraseRule, RuleSet, Severity, SeverityOverride } from './typ
 
 export const LOCAL_RULES_FILENAME = '.llmsloprc.json';
 
-export const BUILTIN_PACKS = ['academic', 'cliches', 'puffery', 'fiction', 'claudeisms', 'structural', 'security', 'openai', 'gemini', 'deepseek', 'llama', 'qwen', 'grok'] as const;
+export const BUILTIN_PACKS = ['academic', 'cliches', 'puffery', 'fiction', 'claudeisms', 'structural', 'security', 'openai', 'gemini', 'deepseek', 'llama', 'qwen', 'grok', 'perplexity'] as const;
 export type BuiltinPack = typeof BUILTIN_PACKS[number];
 
 type RawCharRule = {
@@ -94,7 +94,7 @@ function ingestList(raw: RawList, origin: string, target: RuleSet): void {
       if (typeof p.pattern !== 'string' || p.pattern.length === 0) continue;
       let regex: RegExp;
       try {
-        regex = new RegExp(p.pattern, 'gi');
+        regex = new RegExp(p.pattern, 'gim');
       } catch (e) {
         console.warn(`[LLM Slop] Invalid regex in ${origin}: ${p.pattern}`, e);
         continue;

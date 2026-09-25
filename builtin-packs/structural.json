@@ -23,9 +23,9 @@
     { "pattern": "\\bthe key (takeaway|point|thing|lesson) (is|to remember|here)\\b", "reason": "LLM summary cliche" },
     { "pattern": "\\b(at the end of the day|when all is said and done)\\b", "reason": "LLM closer cliche" },
     { "pattern": "\\bthe bottom line is\\b", "reason": "LLM closer cliche" },
-    { "pattern": "^\\s*(Great|Excellent|Fantastic|Absolutely|Perfect|Wonderful|Certainly)[!.,]", "reason": "sycophantic opener" },
-    { "pattern": "^\\s*That'?s an? (excellent|great|fantastic|wonderful|brilliant|insightful)\\b", "reason": "sycophantic opener" },
-    { "pattern": "^\\s*You raise\\b", "reason": "sycophantic opener" },
-    { "pattern": "^\\s*I('?d| would) (be happy|love) to\\b", "reason": "sycophantic opener" }
+    { "pattern": "^[ \t]*(Great|Excellent|Fantastic|Absolutely|Perfect|Wonderful|Certainly)[!.,]", "reason": "sycophantic opener" },
+    { "pattern": "^[ \t]*That'?s an? (excellent|great|fantastic|wonderful|brilliant|insightful)\\b", "reason": "sycophantic opener" },
+    { "pattern": "^[ \t]*You raise\\b", "reason": "sycophantic opener" },
+    { "pattern": "^[ \t]*I('?d| would) (be happy|love) to\\b", "reason": "sycophantic opener" }
   ]
 }
