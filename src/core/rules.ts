@@ -94,7 +94,7 @@ function ingestList(raw: RawList, origin: string, target: RuleSet): void {
       if (typeof p.pattern !== 'string' || p.pattern.length === 0) continue;
       let regex: RegExp;
       try {
-        regex = new RegExp(p.pattern, 'gi');
+        regex = new RegExp(p.pattern, 'gim');
       } catch (e) {
         console.warn(`[LLM Slop] Invalid regex in ${origin}: ${p.pattern}`, e);
         continue;
