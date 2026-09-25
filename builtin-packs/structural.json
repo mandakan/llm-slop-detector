@@ -1,7 +1,7 @@
 {
   "name": "pack:structural",
-  "version": "0.1.0",
-  "description": "Structural LLM tells: 'not X but Y' pivots, sycophantic openers, section-closer cliches, and meta-commentary.",
+  "version": "0.2.0",
+  "description": "Structural LLM tells: negation pivots, corrective framing, copula avoidance, transition cycling, tailing participle clauses, sycophantic and validation openers, meta-commentary. Original content -- hand-authored regexes; no third-party rule set incorporated.",
   "phrases": [
     { "pattern": "\\bnot (just|only|merely|simply) [^.!?\\n]{1,40}?,? but (also )?\\b", "reason": "negation-pivot -- LLM signature construction" },
     { "pattern": "\\bit(?:'?s| is| was)(?:n'?t| not) (?:just |only |merely )?\\w+[,;]\\s+it(?:'?s| is| was)\\b", "reason": "LLM contrast pivot" },
@@ -26,6 +26,15 @@
     { "pattern": "^[ \t]*(Great|Excellent|Fantastic|Absolutely|Perfect|Wonderful|Certainly)[!.,]", "reason": "sycophantic opener" },
     { "pattern": "^[ \t]*That'?s an? (excellent|great|fantastic|wonderful|brilliant|insightful)\\b", "reason": "sycophantic opener" },
     { "pattern": "^[ \t]*You raise\\b", "reason": "sycophantic opener" },
-    { "pattern": "^[ \t]*I('?d| would) (be happy|love) to\\b", "reason": "sycophantic opener" }
+    { "pattern": "^[ \t]*I('?d| would) (be happy|love) to\\b", "reason": "sycophantic opener" },
+    { "pattern": "\\brather than (simply|just) \\w+ing\\b", "reason": "'Y rather than X' contrastive negation (Wikipedia: Signs of AI writing)" },
+    { "pattern": "\\b(is|are|was|were)(?:n'?t| not) (simply|merely) (a|an|about|that)\\b", "reason": "'X is not simply Y' corrective framing (GPT-6 tell, 576x human rate per Graphite 2026)" },
+    { "pattern": "\\b(stands|functions|operates) as (a|an|the)\\b", "reason": "copula avoidance: 'stands as' for 'is' (Wikipedia: Signs of AI writing)" },
+    { "pattern": "\\bserves as (a|an) (reminder|symbol|beacon|bridge|catalyst|cornerstone|foundation|gateway|hub|pillar|powerful|stark|poignant)\\b", "reason": "copula avoidance: 'serves as a' flourish (Wikipedia: Signs of AI writing)" },
+    { "pattern": "^[ \\t]*(Moreover|Furthermore|Additionally),", "reason": "sentence-initial transition cycling (Wikipedia: Signs of AI writing; 'Furthermore' 43x human rate in Gemini 3.1 per Graphite 2026)" },
+    { "pattern": "\\b(highlighting|underscoring|emphasizing|emphasising|reflecting|showcasing|signaling|signalling|cementing|solidifying|reinforcing|symbolizing|symbolising) (its|their|his|her|the) (importance|significance|role|commitment|dedication|broader|growing|ongoing|enduring|lasting|continued)\\b", "reason": "tailing participle clause adding vague significance (Wikipedia: Signs of AI writing, July 2026)" },
+    { "pattern": "\\b(widely|particularly|closely|often|strongly) associated with\\b", "reason": "vague expression of connection (Wikipedia: Signs of AI writing, August 2026)" },
+    { "pattern": "\\bin (connection|association) with\\b", "reason": "vague expression of connection (Wikipedia: Signs of AI writing, August 2026)" },
+    { "pattern": "\\byou'?re not (alone|broken|crazy|imagining (it|this|things)|overreacting|wrong (to|for))\\b", "reason": "unsolicited validation opener (2026 cross-vendor tell)" }
   ]
 }
