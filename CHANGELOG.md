@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.10.1...llm-slop-detector-v0.11.0) (2026-09-25)
+
+
+### Features
+
+* add 2026 phrase tells (structural, per-model refreshes, validation openers) and spacing chars ([#115](https://github.com/mandakan/llm-slop-detector/issues/115)) ([0e4e909](https://github.com/mandakan/llm-slop-detector/commit/0e4e90946cd4f31ef49286476ccef55a59f4d121))
+* add citation-artifact leak tokens for Gemini, Grok, DeepSeek, Perplexity, and more ChatGPT markers ([#113](https://github.com/mandakan/llm-slop-detector/issues/113)) ([3b4c396](https://github.com/mandakan/llm-slop-detector/commit/3b4c3965e4aceee22ef8b651e6e2e593608f60bd))
+
+
+### Bug Fixes
+
+* line-anchored phrase rules only matched at the start of the document ([#114](https://github.com/mandakan/llm-slop-detector/issues/114)) ([78e0908](https://github.com/mandakan/llm-slop-detector/commit/78e090888924ad29161c3b8f02c28dd99d458bff))
+
 ## [0.10.1](https://github.com/mandakan/llm-slop-detector/compare/llm-slop-detector-v0.10.0...llm-slop-detector-v0.10.1) (2026-08-20)
 
 
