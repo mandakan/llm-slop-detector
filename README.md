@@ -52,7 +52,7 @@ Turn this off in the options page if you only want to lint your own writing. The
 
 - Flags zero-width, BOM, non-breaking spaces, and other invisible Unicode that hides in text and wrecks diffs
 - Flags AI-style punctuation: em and en dashes, curly quotes, horizontal ellipsis, angle quotes
-- Configurable phrase rules: ~40 built-in core rules plus thirteen opt-in packs (`academic`, `cliches`, `puffery`, `fiction`, `claudeisms`, `structural`, `security`, `openai`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`) totalling 500+ curated regex patterns
+- Configurable phrase rules: ~40 built-in core rules plus fourteen opt-in packs (`academic`, `cliches`, `puffery`, `fiction`, `claudeisms`, `structural`, `security`, `openai`, `gemini`, `deepseek`, `llama`, `qwen`, `grok`, `perplexity`) totalling 500+ curated regex patterns
 - Markdown-aware: skips fenced and inline code, link URLs, and YAML frontmatter so technical prose doesn't drown in false positives
 - Inline-ignore comments (`<!-- slop-disable -->`, `<!-- slop-disable-next-line -->`, `<!-- slop-disable-line -->`) for one-off exceptions
 - Hover over any flagged range for the rule selector plus a ready-to-copy `slop-disable-next-line` snippet
@@ -196,12 +196,13 @@ The core list is deliberately conservative: ~40 phrase rules covering the buzzwo
 
 Model-family packs flag mannerisms specific to one vendor's models. Mix and match:
 
-- **`openai`** -- OpenAI GPT / ChatGPT: citation-markup artifact leaks (`oaicite`, `oai_citation`, `contentReference`, `turn0search0`-style web-tool tokens), AI-identity and knowledge-cutoff disclaimers (`as an AI language model`, `knowledge cutoff`), refusal boilerplate (`I cannot fulfill that request`), and stock opener/closer/hedge scaffolding (`Certainly!`, `here's a comprehensive overview`, `I hope this helps`). Original content.
-- **`gemini`** -- Google Gemini / Bard: breakdown-happy structure (`here's a breakdown`, `let's break it down`), analogy openers (`think of it as`, `imagine a`), `I hope this helps` closers, and identity / knowledge-cutoff / professional-advice disclaimers.
-- **`deepseek`** -- DeepSeek V3 / R1: `<think>` tag leaks, R1 reasoning tics leaking into final output (`Wait,`, `Hmm,`, `Let me reconsider`, `the user is asking`), DeepSeek special-token leaks (`<|begin_of_thought|>`, `<|EOT|>`).
+- **`openai`** -- OpenAI GPT / ChatGPT: citation-markup artifact leaks (`oaicite`, `oai_citation`, `contentReference`, `attributableIndex`, `turn0search0`-style web-tool tokens, the invisible `U+E200`-`U+E203` citation delimiters, `utm_source=chatgpt.com`), AI-identity and knowledge-cutoff disclaimers (`as an AI language model`, `knowledge cutoff`), refusal boilerplate (`I cannot fulfill that request`), and stock opener/closer/hedge scaffolding (`Certainly!`, `here's a comprehensive overview`, `I hope this helps`). Original content.
+- **`gemini`** -- Google Gemini / Bard: breakdown-happy structure (`here's a breakdown`, `let's break it down`), analogy openers (`think of it as`, `imagine a`), `I hope this helps` closers, identity / knowledge-cutoff / professional-advice disclaimers, and citation-markup artifact leaks (`[cite: 1]`, `[span_1](start_span)`).
+- **`deepseek`** -- DeepSeek V3 / R1: `<think>` tag leaks, R1 reasoning tics leaking into final output (`Wait,`, `Hmm,`, `Let me reconsider`, `the user is asking`), DeepSeek special-token leaks (`<|begin_of_thought|>`, `<|EOT|>`), and search-citation artifacts (`【1†source】`).
 - **`llama`** -- Meta Llama: `as an AI` identity disclaimers, Llama-Guard refusal boilerplate (`I cannot provide`, `it would not be appropriate`), and Llama2 / Llama3 chat-template token leaks (`[INST]`, `<|eot_id|>`, `<<SYS>>`, `<|python_tag|>`).
 - **`qwen`** -- Alibaba Qwen / QwQ: `Sure!` / `Of course!` openers, Alibaba identity disclaimers, ChatML token leaks (`<|im_start|>`), Qwen-VL tokens (`<|vision_start|>`), and QwQ reasoning-phase tics.
-- **`grok`** -- xAI Grok: `Look,` / `Here's the deal` openers, forced directness (`no BS`, `straight up`, `real talk`), edginess (`based`, `cope`, `galaxy-brained`), Hitchhiker's Guide references (`42`, `Don't panic`), and Elon/X name-drops.
+- **`grok`** -- xAI Grok: `Look,` / `Here's the deal` openers, forced directness (`no BS`, `straight up`, `real talk`), edginess (`based`, `cope`, `galaxy-brained`), Hitchhiker's Guide references (`42`, `Don't panic`), Elon/X name-drops, and citation-markup artifact leaks (`grok_card`, `grok_render_citation_card_json`).
+- **`perplexity`** -- Perplexity: file-upload and attachment markup that survives copy-paste (`ppl-ai-file-upload`, `attached_file`) and `utm_source=perplexity` reference URLs. Original content.
 
 Enable one or more in your settings:
 

@@ -85,7 +85,8 @@
               "deepseek",
               "llama",
               "qwen",
-              "grok"
+              "grok",
+              "perplexity"
             ],
             "enumDescriptions": [
               "Words over-represented in LLM-authored academic writing (derived from berenslab/llm-excess-vocab, MIT)",
@@ -95,12 +96,13 @@
               "Claude-specific mannerisms and sycophantic consent-theater phrasing (derived from SicariusSicariiStuff/SLOP_Detector, Apache-2.0)",
               "Structural LLM tells: 'not X but Y', sycophantic openers, meta-commentary",
               "Flags LLM-weaponized invisibles above the BMP: tag chars (ASCII-smuggler prompt injection) and variation selectors (arbitrary-data smuggling), plus invisible math operators and deprecated format controls. Severity: error/warning.",
-              "OpenAI GPT / ChatGPT tells: citation-markup artifact leaks (oaicite, contentReference), AI-identity and knowledge-cutoff disclaimers, refusal boilerplate, and stock opener/closer/hedge scaffolding",
-              "Google Gemini / Bard tells: breakdown-happy structure, 'I hope this helps' closers, identity and knowledge-cutoff disclaimers",
+              "OpenAI GPT / ChatGPT tells: citation-markup artifact leaks (oaicite, contentReference, invisible U+E200-U+E203 delimiters), AI-identity and knowledge-cutoff disclaimers, refusal boilerplate, and stock opener/closer/hedge scaffolding",
+              "Google Gemini / Bard tells: breakdown-happy structure, 'I hope this helps' closers, identity and knowledge-cutoff disclaimers, and [cite: 1] / [span_1] citation artifacts",
               "DeepSeek V3/R1 tells, notably <think> tags and R1 reasoning tics ('Wait,', 'Hmm,', 'Let me reconsider') leaking into output",
               "Meta Llama tells: 'as an AI' disclaimers, Llama-Guard refusal boilerplate, and Llama2/Llama3 chat-template token leaks ([INST], <|eot_id|>, etc.)",
               "Alibaba Qwen / QwQ tells: cheerful 'Sure!' openers, Alibaba identity disclaimers, and ChatML / QwQ reasoning token leaks",
-              "xAI Grok tells: 'Look,' openers, forced edginess ('based', 'cope', 'no BS'), Hitchhiker's Guide references, and Elon/X name-drops"
+              "xAI Grok tells: 'Look,' openers, forced edginess ('based', 'cope', 'no BS'), Hitchhiker's Guide references, Elon/X name-drops, and citation-markup artifact leaks",
+              "Perplexity artifact leaks: file-upload / attachment markup (ppl-ai-file-upload, attached_file) and utm_source=perplexity reference URLs"
             ]
           },
           "default": [],
